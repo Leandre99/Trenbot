@@ -166,6 +166,16 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
         log.info("%s : signal %s (ligne %s) REFUSÉ : %s", label, side, name, lots.reason)
         return False
 
+    order_type = mt5.ORDER_TYPE_BUY if side == "long" else mt5.ORDER_TYPE_SELL
+    margin = mt5.order_calc_margin(order_type, symbol, lots.lots, entry)
+    free = mt5.account_info().margin_free
+    if config.CAPITAL_CAP:
+        free = min(free, config.CAPITAL_CAP)
+    if margin is None or margin > free * config.MAX_MARGIN_PCT / 100:
+        log.info("%s : signal %s REFUSÉ : marge requise %s > %d %% de la marge libre (%.2f)",
+                 label, side, f"{margin:.2f}" if margin is not None else "?", config.MAX_MARGIN_PCT, free)
+        return False
+
     log.info("%s : SIGNAL %s sur ligne %s (%d touches) entrée≈%.5f stop=%.5f lots=%s risque=%.2f (%.1f %%)",
              label, side.upper(), name, touches, entry, sl, lots.lots, lots.risk_money, lots.risk_pct)
     req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": symbol, "volume": lots.lots,
@@ -180,7 +190,7 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
 # ---------------------------------------------------------------- un passage complet
 def cycle(symbols: dict, trade: bool) -> None:
     acc = mt5.account_info()
-    equity = acc.equity
+    equity = min(acc.equity, config.CAPITAL_CAP) if config.CAPITAL_CAP else acc.equity
     st = load_state()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if st.get("day") != today:

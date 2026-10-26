@@ -17,10 +17,12 @@ SYMBOLS = {
 # Marchés réellement tradés (retire-en pour limiter). Par défaut ceux qui étaient positifs au backtest.
 ACTIVE = ["Volatility 25", "Volatility 75", "Step Index", "USD/JPY", "Or", "GBP/USD"]
 
+CAPITAL_CAP = 100.0       # le bot calcule lots/marge comme si le compte valait AU PLUS ce montant (None = capital réel)
 RISK_PCT = 1.0            # % du capital risqué par trade (100 $ -> 1 $)
 MAX_RISK_PCT = 3.0        # si le lot minimum dépasse ce %, le trade est refusé
 MAX_POSITIONS = 3         # positions ouvertes en même temps (risque total max ~ 3 %)
 DAILY_LOSS_STOP_PCT = 3.0 # plus de nouveaux trades du jour si le capital baisse de ce % depuis le matin
+MAX_MARGIN_PCT = 50       # un trade ne peut pas immobiliser plus de ce % de la marge libre (évite le stop-out)
 MAX_SIGNAL_AGE_S = 600    # on n'ouvre un trade que dans les 10 min qui suivent la clôture de la bougie
 
 MAGIC = 20260501          # identifiant des ordres du bot (pour ne toucher qu'à ses positions)
