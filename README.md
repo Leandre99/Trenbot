@@ -24,6 +24,24 @@ python live_mt5.py --once     # un seul passage
 
 Le bot se réveille 5 s après la clôture de chaque bougie H1. Laisse le PC et MT5 allumés.
 
+## Voir les lignes de tendance sur les graphiques MT5
+
+Le bot écrit ses lignes (W1 épais, D1 moyen, H4 fin ; vert = haussière, rouge = baissière) dans
+`Common\Files\trendbot_lines.csv` à chaque passage. L'indicateur `mql5/TrendBotLines.mq5` les dessine.
+
+```
+python install_indicator.py        # copie et compile l'indicateur dans ton MT5 (une seule fois)
+python live_mt5.py --lines-only    # exporte les lignes sans trader (utile pour regarder)
+```
+
+Dans MT5 : *Navigateur > Indicateurs > TrendBot > TrendBotLines*, glisse-le sur un graphique.
+Les lignes affichées sont exactement celles que le bot utilise pour décider. Elles se mettent à jour à chaque passage (1 fois par heure).
+
+## Outils de diagnostic
+
+- `python show_specs.py` : lot min / pas / marge / spread de chaque marché chez ton broker.
+- `python show_risk.py 100` : lots et risque en $ de chaque marché pour un capital donné.
+
 ## Gestion du risque et des lots (`config.py`, `risk.py`)
 
 - Risque par trade : **1 %** du capital (100 $ -> 1 $), calculé à partir de la distance du stop.

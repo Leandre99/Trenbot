@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from mtf import MTFParams, detect_signal, htf_lines, trail_stop
+from mtf import GRAN_S, MTFParams, detect_signal, htf_lines, trail_stop
 from risk import lot_for_risk
 from strategy import atr, find_pivots
 
@@ -60,8 +60,12 @@ def resolve_symbols() -> dict:
 
 def rates(symbol: str, tf: str) -> pd.DataFrame | None:
     """Bougies CLÔTURÉES uniquement (position 1 = on saute la bougie en cours)."""
-    r = mt5.copy_rates_from_pos(symbol, TF[tf], 1, BARS[tf])
-    if r is None or len(r) < 60:
+    for _ in range(4):  # MT5 télécharge l'historique à la première demande : on réessaie un peu
+        r = mt5.copy_rates_from_pos(symbol, TF[tf], 1, BARS[tf])
+        if r is not None and len(r) >= 60:
+            break
+        time.sleep(2)
+    else:
         return None
     df = pd.DataFrame(r)
     df.index = pd.to_datetime(df["time"], unit="s")
@@ -122,7 +126,45 @@ def manage_position(pos, h1: pd.DataFrame, trade: bool) -> None:
                  trade, f"SL suiveur {pos.symbol} {pos.sl} -> {new_sl:.5f}")
 
 
-def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, trade: bool) -> bool:
+def compute_htf(symbol: str):
+    """Lignes de tendance W1/D1/H4 du symbole. Retourne None s'il manque de l'historique."""
+    htf = {}
+    for name in mp.htfs:
+        df = rates(symbol, name)
+        if df is None:
+            return None
+        htf[name] = htf_lines(df, 0, mp, only_last=True)
+    return htf
+
+
+def export_rows(symbol: str, htf: dict) -> list[str]:
+    """Lignes de dessin pour l'indicateur MQL5 : symbole,échelle,sens,touches,n°,heure,prix.
+    La ligne est découpée en segments tous les ~10 bougies pour suivre les trous (week-ends)."""
+    rows = []
+    for name, (opens, lns) in htf.items():
+        g = GRAN_S[name]
+        k = len(opens) - 1
+        for side, ln in zip(("up", "down"), lns[k]):
+            if ln is None:
+                continue
+            slope, inter, touches = ln
+            idxs = list(range(max(0, k - 80), k + 1, 10))
+            if idxs[-1] != k:
+                idxs.append(k)
+            idxs.append(k + 15)
+            for seq, idx in enumerate(idxs):
+                t = int(opens[idx]) if idx <= k else int(opens[k] + (idx - k) * g)
+                rows.append(f"{symbol},{name},{side},{touches},{seq},{t},{slope * idx + inter:.6f}")
+    return rows
+
+
+def write_lines_file(rows: list[str]) -> None:
+    path = Path(mt5.terminal_info().commondata_path) / "Files" / "trendbot_lines.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(rows) + "\n", encoding="ascii")
+
+
+def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, trade: bool, htf: dict | None) -> bool:
     tk = mt5.symbol_info_tick(symbol)
     if tk is None:
         return False
@@ -131,13 +173,9 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
     if age > config.MAX_SIGNAL_AGE_S:
         return False  # bougie trop ancienne : on n'entre pas en retard
 
-    htf = {}
-    for name in mp.htfs:
-        df = rates(symbol, name)
-        if df is None:
-            log.warning("%s : pas assez d'historique %s", label, name)
-            return False
-        htf[name] = htf_lines(df, 0, mp)
+    if htf is None:
+        log.warning("%s : pas assez d'historique W1/D1/H4", label)
+        return False
 
     o, h, l, c = (h1[k].to_numpy() for k in ("open", "high", "low", "close"))
     t = h1.index.values.astype("datetime64[s]").astype("int64")
@@ -188,7 +226,7 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
 
 
 # ---------------------------------------------------------------- un passage complet
-def cycle(symbols: dict, trade: bool) -> None:
+def cycle(symbols: dict, trade: bool, lines_only: bool = False) -> None:
     acc = mt5.account_info()
     equity = min(acc.equity, config.CAPITAL_CAP) if config.CAPITAL_CAP else acc.equity
     st = load_state()
@@ -202,10 +240,16 @@ def cycle(symbols: dict, trade: bool) -> None:
                     st["start_equity"], equity)
 
     log.info("--- passage | capital=%.2f | positions du bot=%d/%d", equity, len(my_positions()), config.MAX_POSITIONS)
+    line_rows = []
     for label, symbol in symbols.items():
         h1 = rates(symbol, "H1")
         if h1 is None:
             log.warning("%s : pas de données H1", label)
+            continue
+        htf = compute_htf(symbol)
+        if htf is not None:
+            line_rows += export_rows(symbol, htf)
+        if lines_only:
             continue
         pos = my_positions(symbol)
         if pos:
@@ -216,15 +260,19 @@ def cycle(symbols: dict, trade: bool) -> None:
             continue  # cette bougie a déjà été examinée
         if halted or len(my_positions()) >= config.MAX_POSITIONS:
             continue
-        look_for_entry(label, symbol, h1, equity, trade)
+        look_for_entry(label, symbol, h1, equity, trade, htf)
         done[symbol] = key
-    save_state(st)
+    write_lines_file(line_rows)
+    log.info("lignes de tendance exportées pour l'indicateur MT5 (%d points)", len(line_rows))
+    if not lines_only:
+        save_state(st)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--trade", action="store_true", help="envoyer de vrais ordres (sinon essai à blanc)")
     ap.add_argument("--once", action="store_true", help="un seul passage")
+    ap.add_argument("--lines-only", action="store_true", help="exporter seulement les lignes pour l'indicateur (aucun trade)")
     ap.add_argument("--allow-real", action="store_true", help="autoriser un compte RÉEL (déconseillé)")
     args = ap.parse_args()
 
@@ -244,7 +292,7 @@ def main() -> None:
     log.info("Marchés suivis : %s", ", ".join(f"{k}={v}" for k, v in symbols.items()))
     try:
         while True:
-            cycle(symbols, args.trade)
+            cycle(symbols, args.trade and not args.lines_only, args.lines_only)
             if args.once:
                 break
             # prochain passage : 5 s après la clôture de la prochaine bougie H1

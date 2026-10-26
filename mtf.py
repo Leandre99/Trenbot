@@ -47,7 +47,7 @@ def make_htf(h1: pd.DataFrame, d1: pd.DataFrame) -> dict:
     return out
 
 
-def htf_lines(df: pd.DataFrame, gran: int, mp: MTFParams):
+def htf_lines(df: pd.DataFrame, gran: int, mp: MTFParams, only_last: bool = False):
     """Pour chaque bougie complétée de l'échelle, les lignes (haussière, baissière) valides.
     Retourne (open_epochs, liste de (up, down)) où up/down = (pente, ordonnée) en indices de bougies."""
     p = Params(pivot_n=mp.htf_pivot_n, n_pivots=mp.htf_n_pivots, min_touches=mp.htf_min_touches,
@@ -58,6 +58,9 @@ def htf_lines(df: pd.DataFrame, gran: int, mp: MTFParams):
     low_idx, high_idx = np.flatnonzero(is_low), np.flatnonzero(is_high)
     res = []
     for k in range(len(df)):
+        if only_last and k < len(df) - 1:   # en direct, seule la dernière bougie complétée compte
+            res.append((None, None))
+            continue
         a = a_all[k]
         up = down = None
         if not np.isnan(a) and a > 0:
