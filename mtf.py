@@ -31,6 +31,12 @@ class MTFParams:
     atr_n: int = 14
     cost_atr: float = 0.05
     max_bars: int = 2000
+    # Mode d'entrée : "touch" = rebond direct sur la ligne ; "reclaim" = entrée en deux temps :
+    # le prix teste la zone du stop (casse la ligne d'au moins `reclaim_depth` ATR dans les
+    # `reclaim_window` dernières bougies) puis revient la reprendre -> on entre, stop sous le creux du test.
+    entry_mode: str = "touch"
+    reclaim_window: int = 12
+    reclaim_depth: float = 0.5
 
 
 def epoch(idx) -> np.ndarray:
@@ -79,9 +85,44 @@ def htf_lines(df: pd.DataFrame, gran: int, mp: MTFParams, only_last: bool = Fals
     return epoch(df.index), res
 
 
+def detect_reclaim(o, h, l, c, t, i, a, lines, mp: MTFParams):
+    """Entrée en deux temps. Retourne (sens, ligne, échelle, touches, stop) ou None."""
+    w = mp.reclaim_window
+    if i - w < 1:
+        return None
+    t_close = t[i] + 3600
+    js = np.arange(i - w, i + 1)
+    depth = mp.reclaim_depth * a
+    for name in mp.htfs:
+        opens, lns = lines[name]
+        g = GRAN_S[name]
+        k = np.searchsorted(opens + g, t_close, side="right") - 1
+        if k < 0:
+            continue
+        pos = k + (t[js] - opens[k]) / g
+        up, down = lns[k]
+        if up is not None:
+            lv = up[0] * pos + up[1]
+            swept = l[js[:-1]] <= lv[:-1] - depth
+            if swept.any() and c[i - 1] < lv[-2] and c[i] > lv[-1] and c[i] > o[i]:
+                first = int(np.argmax(swept))
+                sl = l[js[first:-1]].min() - mp.trail_atr * a
+                return ("long", lv[-1], name, up[2], sl)
+        if down is not None:
+            lv = down[0] * pos + down[1]
+            swept = h[js[:-1]] >= lv[:-1] + depth
+            if swept.any() and c[i - 1] > lv[-2] and c[i] < lv[-1] and c[i] < o[i]:
+                first = int(np.argmax(swept))
+                sl = h[js[first:-1]].max() + mp.trail_atr * a
+                return ("short", lv[-1], name, down[2], sl)
+    return None
+
+
 def detect_signal(o, h, l, c, t, i, a, lines, mp: MTFParams):
-    """Signal sur la bougie H1 `i` (clôturée). Retourne (sens, valeur_ligne, échelle, touches) ou None.
+    """Signal sur la bougie H1 `i` (clôturée). Retourne (sens, valeur_ligne, échelle, touches[, stop]) ou None.
     Utilisé tel quel par le backtest et par le bot en direct."""
+    if mp.entry_mode == "reclaim":
+        return detect_reclaim(o, h, l, c, t, i, a, lines, mp)
     t_close = t[i] + 3600
     for name in mp.htfs:
         opens, lns = lines[name]
@@ -137,11 +178,11 @@ def backtest_mtf(h1: pd.DataFrame, d1: pd.DataFrame, mp: MTFParams = MTFParams()
             i += 1
             continue
 
-        side, lv, name, touches = signal
+        side, lv, name, touches = signal[:4]
         entry_i = i + 1
         entry = o[entry_i]
         sgn = 1 if side == "long" else -1
-        sl = lv - sgn * mp.sl_atr * a
+        sl = signal[4] if len(signal) > 4 else lv - sgn * mp.sl_atr * a
         risk = (entry - sl) * sgn
         if risk <= 0:
             i += 1

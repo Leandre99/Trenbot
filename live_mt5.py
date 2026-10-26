@@ -187,12 +187,12 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
     if sig is None:
         return False
 
-    side, lv, name, touches = sig
+    side, lv, name, touches = sig[:4]
     info = mt5.symbol_info(symbol)
     tick = mt5.symbol_info_tick(symbol)
     sgn = 1 if side == "long" else -1
     entry = tick.ask if side == "long" else tick.bid
-    sl = lv - sgn * mp.sl_atr * a
+    sl = sig[4] if len(sig) > 4 else lv - sgn * mp.sl_atr * a   # mode "reclaim" : stop sous le creux du test
     if (entry - sl) * sgn <= info.trade_stops_level * info.point:
         log.info("%s : signal %s ignoré (stop trop proche du prix)", label, side)
         return False
