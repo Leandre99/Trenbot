@@ -1,0 +1,249 @@
+"""Bot MT5 : stratégie de rebond sur lignes de tendance multi-échelles (voir mtf.py).
+
+Utilisation (MT5 doit être ouvert et connecté à ton compte) :
+    python live_mt5.py              # essai à blanc : analyse et affiche, n'envoie AUCUN ordre
+    python live_mt5.py --trade      # envoie de vrais ordres (refusé si le compte n'est pas une démo)
+    python live_mt5.py --once       # un seul passage puis arrêt
+Le bot ne gère jamais ton mot de passe : il se branche sur le MT5 déjà connecté.
+"""
+import argparse
+import json
+import logging
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+import MetaTrader5 as mt5
+import numpy as np
+import pandas as pd
+
+import config
+from mtf import MTFParams, detect_signal, htf_lines, trail_stop
+from risk import lot_for_risk
+from strategy import atr, find_pivots
+
+HERE = Path(__file__).parent
+STATE_FILE = HERE / "state.json"
+mp = MTFParams()
+log = logging.getLogger("bot")
+
+TF = {"H1": mt5.TIMEFRAME_H1, "H4": mt5.TIMEFRAME_H4, "D1": mt5.TIMEFRAME_D1, "W1": mt5.TIMEFRAME_W1}
+BARS = {"H1": 400, "H4": 600, "D1": 500, "W1": 200}
+
+
+# ---------------------------------------------------------------- utilitaires
+def load_state() -> dict:
+    try:
+        return json.loads(STATE_FILE.read_text())
+    except Exception:
+        return {}
+
+
+def save_state(st: dict) -> None:
+    STATE_FILE.write_text(json.dumps(st, indent=1))
+
+
+def resolve_symbols() -> dict:
+    available = {s.name.lower(): s.name for s in (mt5.symbols_get() or [])}
+    out = {}
+    for label in config.ACTIVE:
+        for cand in config.SYMBOLS[label]:
+            if cand.lower() in available:
+                real = available[cand.lower()]
+                mt5.symbol_select(real, True)
+                out[label] = real
+                break
+        else:
+            log.warning("%s : symbole introuvable chez ce broker (%s), ignoré", label, config.SYMBOLS[label])
+    return out
+
+
+def rates(symbol: str, tf: str) -> pd.DataFrame | None:
+    """Bougies CLÔTURÉES uniquement (position 1 = on saute la bougie en cours)."""
+    r = mt5.copy_rates_from_pos(symbol, TF[tf], 1, BARS[tf])
+    if r is None or len(r) < 60:
+        return None
+    df = pd.DataFrame(r)
+    df.index = pd.to_datetime(df["time"], unit="s")
+    return df[["open", "high", "low", "close"]].astype(float)
+
+
+def my_positions(symbol: str | None = None):
+    pos = mt5.positions_get(symbol=symbol) if symbol else mt5.positions_get()
+    return [p for p in (pos or []) if p.magic == config.MAGIC]
+
+
+def filling_type(symbol: str) -> int:
+    fm = mt5.symbol_info(symbol).filling_mode
+    if fm & 1:
+        return mt5.ORDER_FILLING_FOK
+    if fm & 2:
+        return mt5.ORDER_FILLING_IOC
+    return mt5.ORDER_FILLING_RETURN
+
+
+def send(request: dict, trade: bool, what: str) -> bool:
+    if not trade:
+        log.info("[ESSAI À BLANC] %s | %s", what, request)
+        return True
+    res = mt5.order_send(request)
+    if res is None or res.retcode != mt5.TRADE_RETCODE_DONE:
+        log.error("ORDRE REFUSÉ %s | code=%s %s", what, getattr(res, "retcode", None), getattr(res, "comment", mt5.last_error()))
+        return False
+    log.info("ORDRE OK %s | ticket=%s prix=%s", what, res.order, res.price)
+    return True
+
+
+# ---------------------------------------------------------------- logique par symbole
+def manage_position(pos, h1: pd.DataFrame, trade: bool) -> None:
+    """Stop suiveur : remonte (ou descend) le SL derrière le dernier pivot, jamais en arrière."""
+    side = "long" if pos.type == mt5.POSITION_TYPE_BUY else "short"
+    o, h, l, c = (h1[k].to_numpy() for k in ("open", "high", "low", "close"))
+    a = atr(h1, mp.atr_n)[-1]
+    is_low, is_high = find_pivots(h1, mp.pivot_n)
+    low_idx, high_idx = np.flatnonzero(is_low), np.flatnonzero(is_high)
+    t_open = pd.Timestamp(pos.time, unit="s")
+    entry_i = int(h1.index.searchsorted(t_open))
+    j = len(h1) - 1
+    new_sl = trail_stop(side, pos.sl, h, l, low_idx, high_idx, entry_i, j, a, mp)
+    info = mt5.symbol_info(pos.symbol)
+    tick = mt5.symbol_info_tick(pos.symbol)
+    # le stop doit rester à distance minimale du prix
+    min_dist = info.trade_stops_level * info.point
+    if side == "long":
+        if new_sl > pos.sl + info.point and new_sl < tick.bid - min_dist:
+            send({"action": mt5.TRADE_ACTION_SLTP, "position": pos.ticket, "symbol": pos.symbol,
+                  "sl": round(new_sl, info.digits), "tp": pos.tp},
+                 trade, f"SL suiveur {pos.symbol} {pos.sl} -> {new_sl:.5f}")
+    else:
+        if new_sl < pos.sl - info.point and new_sl > tick.ask + min_dist:
+            send({"action": mt5.TRADE_ACTION_SLTP, "position": pos.ticket, "symbol": pos.symbol,
+                  "sl": round(new_sl, info.digits), "tp": pos.tp},
+                 trade, f"SL suiveur {pos.symbol} {pos.sl} -> {new_sl:.5f}")
+
+
+def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, trade: bool) -> bool:
+    tk = mt5.symbol_info_tick(symbol)
+    if tk is None:
+        return False
+    # heure du SERVEUR (les bougies MT5 sont en heure serveur, pas en heure du PC)
+    age = tk.time - (h1.index[-1].timestamp() + 3600)
+    if age > config.MAX_SIGNAL_AGE_S:
+        return False  # bougie trop ancienne : on n'entre pas en retard
+
+    htf = {}
+    for name in mp.htfs:
+        df = rates(symbol, name)
+        if df is None:
+            log.warning("%s : pas assez d'historique %s", label, name)
+            return False
+        htf[name] = htf_lines(df, 0, mp)
+
+    o, h, l, c = (h1[k].to_numpy() for k in ("open", "high", "low", "close"))
+    t = h1.index.values.astype("datetime64[s]").astype("int64")
+    i = len(h1) - 1
+    a = atr(h1, mp.atr_n)[i]
+    if np.isnan(a) or a <= 0:
+        return False
+    sig = detect_signal(o, h, l, c, t, i, a, htf, mp)
+    if sig is None:
+        return False
+
+    side, lv, name, touches = sig
+    info = mt5.symbol_info(symbol)
+    tick = mt5.symbol_info_tick(symbol)
+    sgn = 1 if side == "long" else -1
+    entry = tick.ask if side == "long" else tick.bid
+    sl = lv - sgn * mp.sl_atr * a
+    if (entry - sl) * sgn <= info.trade_stops_level * info.point:
+        log.info("%s : signal %s ignoré (stop trop proche du prix)", label, side)
+        return False
+
+    tv = info.trade_tick_value_loss if info.trade_tick_value_loss > 0 else info.trade_tick_value
+    lots = lot_for_risk(equity, config.RISK_PCT, config.MAX_RISK_PCT, entry, sl,
+                        info.trade_tick_size, tv, info.volume_min, info.volume_max, info.volume_step)
+    if lots.reason:
+        log.info("%s : signal %s (ligne %s) REFUSÉ : %s", label, side, name, lots.reason)
+        return False
+
+    log.info("%s : SIGNAL %s sur ligne %s (%d touches) entrée≈%.5f stop=%.5f lots=%s risque=%.2f (%.1f %%)",
+             label, side.upper(), name, touches, entry, sl, lots.lots, lots.risk_money, lots.risk_pct)
+    req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": symbol, "volume": lots.lots,
+           "type": mt5.ORDER_TYPE_BUY if side == "long" else mt5.ORDER_TYPE_SELL,
+           "price": entry, "sl": round(sl, info.digits), "tp": 0.0,
+           "deviation": config.DEVIATION, "magic": config.MAGIC,
+           "comment": f"trendbot {name}", "type_time": mt5.ORDER_TIME_GTC,
+           "type_filling": filling_type(symbol)}
+    return send(req, trade, f"{side.upper()} {symbol} {lots.lots} lots")
+
+
+# ---------------------------------------------------------------- un passage complet
+def cycle(symbols: dict, trade: bool) -> None:
+    acc = mt5.account_info()
+    equity = acc.equity
+    st = load_state()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if st.get("day") != today:
+        st = {"day": today, "start_equity": equity, "done": {}}
+    done = st.setdefault("done", {})
+    halted = equity < st["start_equity"] * (1 - config.DAILY_LOSS_STOP_PCT / 100)
+    if halted:
+        log.warning("Limite de perte du jour atteinte (%.2f -> %.2f) : plus de nouveaux trades aujourd'hui",
+                    st["start_equity"], equity)
+
+    log.info("--- passage | capital=%.2f | positions du bot=%d/%d", equity, len(my_positions()), config.MAX_POSITIONS)
+    for label, symbol in symbols.items():
+        h1 = rates(symbol, "H1")
+        if h1 is None:
+            log.warning("%s : pas de données H1", label)
+            continue
+        pos = my_positions(symbol)
+        if pos:
+            manage_position(pos[0], h1, trade)
+            continue
+        key = f"{symbol}:{h1.index[-1]}"
+        if done.get(symbol) == key:
+            continue  # cette bougie a déjà été examinée
+        if halted or len(my_positions()) >= config.MAX_POSITIONS:
+            continue
+        look_for_entry(label, symbol, h1, equity, trade)
+        done[symbol] = key
+    save_state(st)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--trade", action="store_true", help="envoyer de vrais ordres (sinon essai à blanc)")
+    ap.add_argument("--once", action="store_true", help="un seul passage")
+    ap.add_argument("--allow-real", action="store_true", help="autoriser un compte RÉEL (déconseillé)")
+    args = ap.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
+                        handlers=[logging.StreamHandler(), logging.FileHandler(HERE / "bot.log", encoding="utf-8")])
+    if not mt5.initialize():
+        raise SystemExit(f"Impossible de se connecter à MT5 (ouvre-le et connecte-toi) : {mt5.last_error()}")
+    acc = mt5.account_info()
+    is_demo = acc.trade_mode == mt5.ACCOUNT_TRADE_MODE_DEMO
+    log.info("Compte %s | %s | %s | solde=%.2f %s", acc.login, acc.server, "DÉMO" if is_demo else "RÉEL", acc.balance, acc.currency)
+    if args.trade and not is_demo and not args.allow_real:
+        raise SystemExit("Compte RÉEL détecté : refus de trader. (Option --allow-real si tu assumes, mais teste d'abord en démo.)")
+    if not args.trade:
+        log.info("MODE ESSAI À BLANC : aucun ordre ne sera envoyé (utilise --trade pour trader sur la démo)")
+
+    symbols = resolve_symbols()
+    log.info("Marchés suivis : %s", ", ".join(f"{k}={v}" for k, v in symbols.items()))
+    try:
+        while True:
+            cycle(symbols, args.trade)
+            if args.once:
+                break
+            # prochain passage : 5 s après la clôture de la prochaine bougie H1
+            wait = 3600 - (time.time() % 3600) + 5
+            log.info("prochain passage dans %d min", wait // 60)
+            time.sleep(wait)
+    finally:
+        mt5.shutdown()
+
+
+if __name__ == "__main__":
+    main()
