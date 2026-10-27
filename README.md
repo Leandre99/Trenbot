@@ -24,10 +24,10 @@ Double-clic sur **`lancer_interface.bat`** (ou `python dashboard.py`) : une page
 - **Connexion** : numéro de compte, mot de passe, serveur ; ou « utiliser le compte déjà ouvert dans MT5 ».
   Le **mot de passe n'est jamais enregistré ni journalisé** ; seuls le numéro et le serveur sont mémorisés (`accounts.json`).
 - **Changer de compte / se déconnecter** : menu du compte en haut à droite, ou page Comptes. Impossible tant que le bot tourne.
-- **Tableau de bord** : état du bot, capital simulé, gains, positions, graphique interactif, activité récente.
-  **Essai à blanc** (rien n'est envoyé), **Trader sur la démo** (confirmation demandée ; un compte réel est refusé), **Arrêter**.
+- **Tableau de bord** : état du bot, capital du compte, gains, positions, graphique interactif, activité récente.
+  **Démarrer le bot** (confirmation demandée ; un compte réel est refusé) et **Arrêter**.
 - Pages **Positions**, **Journal** (filtres signaux / refus / erreurs, recherche), **Bilan** (30 jours, par marché), **Réglages**
-  (capital simulé, risque, positions max, arrêt du jour, spread max : `settings.json`, pris en compte au prochain démarrage du bot).
+  (risque, positions max, arrêt du jour, spread max : `settings.json`, pris en compte au prochain démarrage du bot).
 - Thème sombre ou clair (bouton en haut). Le bot tourne dans un processus à part ; quitter le tableau de bord (Ctrl+C) l'arrête,
   mais les stop-loss restent chez le broker. Un seul bot qui trade à la fois (détecté automatiquement).
 - Sécurité : écoute seulement sur 127.0.0.1, jeton secret à chaque lancement, en-tête Host vérifié, trading demandé avec confirmation.
@@ -53,7 +53,7 @@ Chaque ordre ouvert est aussi noté dans `trades_log.csv`.
 
 - Lots = `risque visé en $ / perte par lot au stop`, arrondi vers le bas au pas du broker. Dépend donc du marché.
 - Risque visé : **1 %** du capital par trade. Si même le lot minimum dépasse **3 %**, le trade est refusé.
-- `CAPITAL_CAP = 100` : le bot raisonne comme si le compte valait 100 $ **+ ses propres gains/pertes** (mets `None` pour utiliser le capital réel).
+- Les lots sont calculés sur le **vrai capital du compte** (option avancée `CAPITAL_CAP` dans `config.py` : un nombre fixe un capital fictif + gains/pertes du bot).
 - **3 positions max**, une seule par marché (`MAX_POSITIONS`, réglable dans l'interface). **Arrêt du jour** si le capital baisse de 3 %.
 - **Filtre de spread** : refus si le spread dépasse 0,15 R (15 % de la distance au stop).
 - **Garde-fou de marge** : un trade ne peut pas immobiliser plus de 50 % de la marge libre.

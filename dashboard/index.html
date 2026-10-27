@@ -221,13 +221,12 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
           <div class="state"><div class="ring" id="ring"><svg class="ico" style="width:24px;height:24px" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
             <div><div class="t" id="stTitle">Bot arrêté</div><div class="s" id="stSub"></div></div></div>
           <div class="actions">
-            <button class="btn" id="bDry">Essai à blanc</button>
-            <button class="btn primary" id="bTrade">Trader sur la démo</button>
+            <button class="btn primary" id="bTrade">Démarrer le bot</button>
             <button class="btn danger" id="bStop" disabled>Arrêter</button>
           </div>
         </div>
         <div class="grid g4 mb">
-          <div class="card kpi"><div class="l">Capital simulé</div><div class="v" id="kCap">–</div><div class="n" id="kCapN">&nbsp;</div></div>
+          <div class="card kpi"><div class="l">Capital du compte</div><div class="v" id="kCap">–</div><div class="n" id="kCapN">&nbsp;</div></div>
           <div class="card kpi"><div class="l">Gains · 30 jours</div><div class="v" id="kNet">–</div><div class="n" id="kNetN">&nbsp;</div><svg class="sp" id="kSpark" viewBox="0 0 92 36"></svg></div>
           <div class="card kpi"><div class="l">Positions ouvertes</div><div class="v" id="kPos">–</div><div class="n">stops posés chez le broker</div></div>
           <div class="card kpi"><div class="l">Signaux · session</div><div class="v" id="kSig">0</div><div class="n" id="kSigN">aucun pour l'instant</div></div>
@@ -277,7 +276,7 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
   </div>
 </div>
 
-<div class="veil" id="vTrade" role="dialog" aria-modal="true"><div class="card modal"><h3>Trader sur la démo ?</h3>
+<div class="veil" id="vTrade" role="dialog" aria-modal="true"><div class="card modal"><h3>Démarrer le bot ?</h3>
   <p>Le bot va ouvrir de <b>vrais ordres</b> sur le compte démo connecté. Il refuse automatiquement un compte réel.</p><p>Chaque ordre part avec son stop-loss, posé chez le broker.</p>
   <div class="btns"><button class="btn" data-close>Annuler</button><button class="btn primary" id="tYes">Oui, démarrer</button></div></div></div>
 <div class="veil" id="vOut" role="dialog" aria-modal="true"><div class="card modal"><h3>Se déconnecter ?</h3>
@@ -392,11 +391,11 @@ function render(s){
   if(run){ const since = s.bot.started_at ? " · démarré à " + new Date(s.bot.started_at*1000).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) : "";
     const nx = new Date(); nx.setMinutes(0,5,0); nx.setHours(nx.getHours() + 1); const mins = Math.max(0, Math.round((nx - new Date())/60000));
     $("stSub").textContent = s.bot.mode.charAt(0).toUpperCase() + s.bot.mode.slice(1) + since + " · prochain passage dans ~" + mins + " min";
-  } else $("stSub").textContent = a.demo ? "Choisis un mode pour démarrer." : "Compte réel détecté : le bot refusera de trader.";
-  $("bDry").disabled = $("bTrade").disabled = run; $("bStop").disabled = !run;
+  } else $("stSub").textContent = a.demo ? "Prêt à démarrer." : "Compte réel détecté : le bot refusera de trader.";
+  $("bTrade").disabled = run; $("bStop").disabled = !run;
 
-  const cap = s.settings.CAPITAL_CAP, sm = s.summary;
-  $("kCap").textContent = money(s.sim_capital); $("kCapN").textContent = cap ? `départ ${money(cap)} · bot ${signed(s.bot_pnl)}` : "capital réel du compte";
+  const sm = s.summary;
+  $("kCap").textContent = money(a.equity); $("kCapN").textContent = "solde " + money(a.balance);
   $("kNet").innerHTML = sm ? `<span class="${cls(sm.net)}">${signed(sm.net)}</span>` : "–";
   $("kNetN").textContent = sm ? `${sm.trades} trade(s) · ${sm.trades ? Math.round(sm.wins/sm.trades*100) : 0} % gagnants` : "en attente";
   $("kPos").textContent = `${s.positions.length} / ${s.settings.MAX_POSITIONS}`; $("navPos").textContent = s.positions.length;
@@ -425,7 +424,7 @@ function renderBilan(){
     sm.by_market.map(m => { const w = Math.abs(m[2])/mx*50, pos = m[2] >= 0;
       return `<div class="bar-row"><span>${esc(m[0].replace(" Index",""))}<span class="dim"> · ${m[1]}</span></span><div class="track"><div class="fill" style="${pos ? `left:50%;width:${w}%;background:var(--green)` : `right:50%;width:${w}%;background:var(--red)`}"></div></div><span class="${cls(m[2])}" style="text-align:right"><b>${signed(m[2])}</b></span></div>`; }).join("");
 }
-const FA = [["CAPITAL_CAP","Capital simulé","vide = capital réel du compte"],["RISK_PCT","Risque par trade (%)","perte visée si le stop est touché"],["MAX_RISK_PCT","Risque max au lot minimum (%)","au-delà, le trade est refusé"]];
+const FA = [["RISK_PCT","Risque par trade (%)","perte visée si le stop est touché"],["MAX_RISK_PCT","Risque max au lot minimum (%)","au-delà, le trade est refusé"]];
 const FB = [["MAX_POSITIONS","Positions maximum","ouvertes en même temps"],["DAILY_LOSS_STOP_PCT","Arrêt du jour (%)","plus de trade si le capital baisse de ce %"],["MAX_SPREAD_R","Spread maximum (R)","refus si le coût dépasse ce multiple du stop"]];
 function renderForm(){
   const st = S.settings, key = JSON.stringify(st); if($("formA").dataset.v === key || document.activeElement?.closest?.("#v-set")) return; $("formA").dataset.v = key;
@@ -506,7 +505,6 @@ async function pollLog(){
 async function refresh(){ try{ render(await api("/api/status")); }catch(e){} }
 async function pollStatus(){ await refresh(); setTimeout(pollStatus, 3000); }
 async function act(fn, ok){ try{ const j = await fn(); if(j.ok === false) toast(j.error || "Impossible", true); else if(ok) toast(ok); refresh(); }catch(e){ toast(e.message, true); } }
-$("bDry").onclick = () => act(() => api("/api/start", {trade:false}), "Essai à blanc démarré");
 $("bTrade").onclick = () => $("vTrade").classList.add("show");
 $("tYes").onclick = () => { $("vTrade").classList.remove("show"); act(() => api("/api/start", {trade:true, confirm:true}), "Bot démarré sur la démo"); };
 $("bStop").onclick = () => act(() => api("/api/stop", {}), "Arrêt demandé");

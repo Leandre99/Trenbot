@@ -33,7 +33,7 @@ SYMBOLS = {
 # Les marchés dont le lot minimum est trop gros pour ton capital sont refusés automatiquement (et signalés au journal).
 ACTIVE = list(SYMBOLS)
 
-CAPITAL_CAP = 100.0       # le bot calcule lots/marge comme si le compte valait AU PLUS ce montant (None = capital réel)
+CAPITAL_CAP = None        # None = le bot utilise le VRAI capital du compte (option avancée : un nombre = capital fictif + gains/pertes du bot)
 RISK_PCT = 1.0            # % du capital risqué par trade (100 $ -> 1 $)
 MAX_RISK_PCT = 3.0        # si le lot minimum dépasse ce %, le trade est refusé
 MAX_POSITIONS = 3         # positions ouvertes en même temps (risque total max ~ 3 %). La simulation montrait des baisses un peu plus faibles avec 2 ; 5 est nettement pire
