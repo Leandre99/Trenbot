@@ -42,5 +42,19 @@ MAX_SPREAD_R = 0.15       # refus si le spread dépasse ce multiple du risque (d
 MAX_MARGIN_PCT = 50      # un trade ne peut pas immobiliser plus de ce % de la marge libre (évite le stop-out)
 MAX_SIGNAL_AGE_S = 900    # on n'ouvre un trade que dans les 15 min qui suivent la clôture (24 marchés ≈ 5 min d'analyse)
 
-MAGIC = 20260501          # identifiant des ordres du bot (pour ne toucher qu'à ses positions)
+MAGIC = 20260501         # identifiant des ordres du bot (pour ne toucher qu'à ses positions)
 DEVIATION = 20            # glissement max accepté, en points
+
+# ---- Réglages modifiés depuis l'interface (settings.json) : priment sur les valeurs ci-dessus ----
+import json as _json
+from pathlib import Path as _Path
+
+EDITABLE = ("CAPITAL_CAP", "RISK_PCT", "MAX_RISK_PCT", "MAX_POSITIONS", "DAILY_LOSS_STOP_PCT", "MAX_SPREAD_R")
+_f = _Path(__file__).with_name("settings.json")
+if _f.exists():
+    try:
+        for _k, _v in _json.loads(_f.read_text(encoding="utf-8")).items():
+            if _k in EDITABLE:
+                globals()[_k] = _v
+    except Exception:  # fichier abîmé : on garde les valeurs par défaut
+        pass

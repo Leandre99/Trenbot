@@ -4,5 +4,6 @@ cache/
 bot.log
 state.json
 trades_log.csv
+settings.json
 .env
 *.png

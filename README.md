@@ -16,7 +16,20 @@ pip install -r requirements.txt
 1. Ouvre **MetaTrader 5**, connecte-toi à ton compte **démo** (le bot ne gère jamais ton mot de passe).
 2. *Outils > Options > Expert Advisors* : coche « Autoriser le trading algorithmique ».
 
-## Utilisation
+## Interface (le plus simple)
+
+Double-clic sur **`lancer_interface.bat`** (ou `python app.py`), MT5 ouvert et connecté à ta démo.
+
+- **▶ Démarrer (essai à blanc)** : le bot analyse et valide chaque ordre auprès de MT5 sans rien envoyer.
+- **▶ Démarrer (trade sur la démo)** : demande confirmation, puis trade sur la démo (refus automatique d'un compte réel).
+- **■ Arrêter** : arrête le bot ; les positions ouvertes gardent leur stop-loss chez le broker.
+- Onglets : **Journal** en direct (signaux en vert, refus en orange, erreurs en rouge), **Positions du bot**, **Réglages**
+  (capital simulé, risque, positions max, arrêt du jour, spread max : enregistrés dans `settings.json`, pris en compte au prochain démarrage).
+- **Bilan** : gains/pertes des 30 derniers jours. **Mettre à jour les lignes MT5** : rafraîchit les lignes de l'indicateur.
+
+Fermer la fenêtre arrête le bot (après confirmation). PC et MT5 doivent rester allumés.
+
+## Utilisation en ligne de commande
 
 ```
 python live_mt5.py                 # essai à blanc en continu : analyse, valide chaque ordre auprès de MT5, n'envoie RIEN
@@ -60,6 +73,8 @@ Vert = haussière, rouge = baissière ; semaine épais, jour moyen, 4h fin.
 python test_risk.py                # lots
 python test_bot.py                 # lignes, signaux, stop suiveur, spread, perte du jour, export (données fabriquées)
 python test_demo_lifecycle.py      # RÉEL sur démo uniquement : ouvre 1 lot min avec stop, déplace le stop, ferme
+python test_settings.py            # réglages de l'interface -> lus par le bot
+python app.py --smoke              # interface : démarre le bot, reçoit le journal, l'arrête, ouvre le bilan
 ```
 
 ## Outils d'analyse
