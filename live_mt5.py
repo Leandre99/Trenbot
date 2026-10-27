@@ -164,10 +164,11 @@ def write_lines_file(rows: list[str]) -> None:
     path.write_text("\n".join(rows) + "\n", encoding="ascii")
 
 
-def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, trade: bool, htf: dict | None) -> bool:
+def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, trade: bool, htf: dict | None) -> bool | None:
+    """True = ordre envoyé, False = bougie examinée sans entrée, None = bougie NON examinée (à retenter)."""
     tk = mt5.symbol_info_tick(symbol)
     if tk is None:
-        return False
+        return None
     # heure du SERVEUR (les bougies MT5 sont en heure serveur, pas en heure du PC)
     age = tk.time - (h1.index[-1].timestamp() + 3600)
     if age > config.MAX_SIGNAL_AGE_S:
@@ -176,11 +177,11 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
             log.info("Dernière bougie H1 fermée il y a %d min (> %d min) : aucune NOUVELLE entrée possible dans ce passage. "
                      "Laisse le bot tourner (il agit à chaque heure pile) ou teste avec --ignore-age en essai à blanc.",
                      age // 60, config.MAX_SIGNAL_AGE_S // 60)
-        return False  # bougie trop ancienne : on n'entre pas en retard
+        return None  # bougie trop ancienne : on n'entre pas en retard (None = pas examinée)
 
     if htf is None:
         log.warning("%s : pas assez d'historique W1/D1/H4", label)
-        return False
+        return None
 
     o, h, l, c = (h1[k].to_numpy() for k in ("open", "high", "low", "close"))
     t = h1.index.values.astype("datetime64[s]").astype("int64")
@@ -266,11 +267,11 @@ def cycle(symbols: dict, trade: bool, lines_only: bool = False) -> None:
             continue  # cette bougie a déjà été examinée
         if halted or len(my_positions()) >= config.MAX_POSITIONS:
             continue
-        look_for_entry(label, symbol, h1, equity, trade, htf)
-        done[symbol] = key
+        if look_for_entry(label, symbol, h1, equity, trade, htf) is not None:
+            done[symbol] = key   # marquée « examinée » seulement si elle l'a vraiment été
     write_lines_file(line_rows)
     log.info("lignes de tendance exportées pour l'indicateur MT5 (%d points)", len(line_rows))
-    if not lines_only:
+    if trade and not lines_only:   # l'essai à blanc n'enregistre rien : on peut le relancer à volonté
         save_state(st)
 
 
