@@ -1,6 +1,6 @@
 """Simule un compte avec les VRAIES règles du bot, sur les trades du backtest H1 (spreads et lots réels de ton broker).
 
-Règles reprises de config.py / live_mt5.py : risque 1 % par trade (lot minimum accepté jusqu'à 3 %), 3 positions max,
+Règles reprises de config.py / live_mt5.py : risque 1 % par trade (lot minimum accepté jusqu'à 3 %), config.MAX_POSITIONS positions max,
 une seule par marché, filtre de spread 0,15 R, marge <= 50 % de la marge libre, arrêt du jour à -3 %.
 Usage : python simulate_account.py
 """
@@ -41,7 +41,7 @@ def simulate(capital: float, start=None, end=None):
         if r.entry_time.date() != day:
             day, day_start = r.entry_time.date(), equity
         if len(open_pos) >= config.MAX_POSITIONS:
-            refused["3 positions déjà ouvertes"] += 1
+            refused[f"{config.MAX_POSITIONS} positions déjà ouvertes"] += 1
             continue
         if daily_halt(equity, day_start, config.DAILY_LOSS_STOP_PCT):
             refused["arrêt du jour (-3 %)"] += 1

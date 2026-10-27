@@ -38,7 +38,7 @@ Chaque ordre ouvert est aussi noté dans `trades_log.csv`.
 - Lots = `risque visé en $ / perte par lot au stop`, arrondi vers le bas au pas du broker. Dépend donc du marché.
 - Risque visé : **1 %** du capital par trade. Si même le lot minimum dépasse **3 %**, le trade est refusé.
 - `CAPITAL_CAP = 100` : le bot raisonne comme si le compte valait 100 $ **+ ses propres gains/pertes** (mets `None` pour utiliser le capital réel).
-- **3 positions max**, une seule par marché. **Arrêt du jour** si le capital baisse de 3 %.
+- **2 positions max**, une seule par marché (`MAX_POSITIONS`). **Arrêt du jour** si le capital baisse de 3 %.
 - **Filtre de spread** : refus si le spread dépasse 0,15 R (15 % de la distance au stop).
 - **Garde-fou de marge** : un trade ne peut pas immobiliser plus de 50 % de la marge libre.
 - Pas d'entrée si la bougie a plus de 15 min (redémarrage tardif).
@@ -75,6 +75,15 @@ python test_demo_lifecycle.py      # RÉEL sur démo uniquement : ouvre 1 lot mi
 - H1 tient avec les vrais spreads (≈ +77 R sur 24 marchés en 1 an avec le filtre) ; M15 perd en moyenne (sauf Step Index, mis de côté).
 - L'entrée en deux temps (retour après cassure) est moins bonne que le rebond direct (`entry_mode="reclaim"` reste disponible).
 - Garder seulement les marchés positifs ne marche pas : on garde les 24, le filtre de spread écarte les mauvais coûts.
+
+## Ce qu'on peut attendre avec 100 $ (simulation avec les vraies règles : `python simulate_account.py`)
+
+- Sur l'année passée : +19 % mais **pire baisse −72 %** (3 positions, 100 $). Sur 3 mois : médiane ≈ 0 %, pire 10 % ≈ −45 %,
+  meilleur 10 % ≈ +74 %, seulement ~49 % des périodes gagnantes. À 100 $, le bot ne prend qu'environ 1 signal sur 5
+  (positions déjà prises, lot minimum trop gros, arrêt du jour, spread).
+- **2 positions max** donne une baisse moyenne plus faible que 3 dans les 6 combinaisons testées (`python sweep_risk.py`) ; 5 est nettement pire.
+- Les autres écarts entre réglages (risque 0,5/1/2 %, capital 100/250/500/1000 $) sont du bruit : ne pas optimiser dessus.
+- C'est un **test**, pas une source de revenu : lancer en démo 2 à 3 mois sans toucher aux réglages, puis comparer avec `python report.py`.
 
 ## Limites
 

@@ -36,7 +36,7 @@ ACTIVE = list(SYMBOLS)
 CAPITAL_CAP = 100.0       # le bot calcule lots/marge comme si le compte valait AU PLUS ce montant (None = capital réel)
 RISK_PCT = 1.0            # % du capital risqué par trade (100 $ -> 1 $)
 MAX_RISK_PCT = 3.0        # si le lot minimum dépasse ce %, le trade est refusé
-MAX_POSITIONS = 3         # positions ouvertes en même temps (risque total max ~ 3 %)
+MAX_POSITIONS = 2         # positions ouvertes en même temps (risque total max ~ 2 %). 2 réduit les baisses vs 3 (simulation), 5 est pire
 DAILY_LOSS_STOP_PCT = 3.0 # plus de nouveaux trades du jour si le capital baisse de ce % depuis le matin
 MAX_SPREAD_R = 0.15       # refus si le spread dépasse ce multiple du risque (distance au stop) : le coût mange le trade
 MAX_MARGIN_PCT = 50      # un trade ne peut pas immobiliser plus de ce % de la marge libre (évite le stop-out)
