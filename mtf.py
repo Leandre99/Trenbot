@@ -32,6 +32,9 @@ class MTFParams:
     cost_atr: float = 0.05
     cost_price: float = 0.0            # si > 0 : spread réel en prix (remplace cost_atr)
     entry_sec: int = 3600              # durée d'une bougie de l'échelle d'entrée (3600 = H1, 900 = M15)
+    trend_filter: bool = False         # n'acheter que si le D1 est au-dessus de sa moyenne, ne vendre que s'il est en dessous
+    trend_ema: int = 50
+    be_r: float = 0.0                  # > 0 : stop ramené à l'entrée quand le gain latent atteint be_r x le risque
     max_bars: int = 2000
     # Mode d'entrée : "touch" = rebond direct sur la ligne ; "reclaim" = entrée en deux temps :
     # le prix teste la zone du stop (casse la ligne d'au moins `reclaim_depth` ATR dans les
@@ -158,6 +161,8 @@ def trail_stop(side: str, sl: float, h, l, low_idx, high_idx, entry_i: int, j: i
 
 def backtest_mtf(h1: pd.DataFrame, d1: pd.DataFrame, mp: MTFParams = MTFParams(), cache: dict | None = None):
     htf = make_htf(h1, d1)
+    d1_open, d1_close = epoch(d1.index), d1["close"].to_numpy()
+    d1_ema = d1["close"].ewm(span=mp.trend_ema, adjust=False).mean().to_numpy()
     lines = cache if cache is not None else {}
     for name in mp.htfs:
         if name not in lines:
@@ -180,6 +185,11 @@ def backtest_mtf(h1: pd.DataFrame, d1: pd.DataFrame, mp: MTFParams = MTFParams()
         if signal is None:
             i += 1
             continue
+        if mp.trend_filter:   # tendance de fond : dernière bougie D1 complétée au-dessus / en dessous de sa moyenne
+            kd = np.searchsorted(d1_open + 86400, t[i] + mp.entry_sec, side="right") - 1
+            if kd < 0 or (signal[0] == "long") != bool(d1_close[kd] > d1_ema[kd]):
+                i += 1
+                continue
 
         side, lv, name, touches = signal[:4]
         entry_i = i + 1
@@ -192,6 +202,7 @@ def backtest_mtf(h1: pd.DataFrame, d1: pd.DataFrame, mp: MTFParams = MTFParams()
             continue
         init_sl = sl
         exit_i, exit_px = None, None
+        be_done = False
         for j in range(entry_i, min(n, entry_i + mp.max_bars)):
             sl = trail_stop(side, sl, h, l, low_idx, high_idx, entry_i, j, a, mp)
             if side == "long" and l[j] <= sl:
@@ -200,6 +211,11 @@ def backtest_mtf(h1: pd.DataFrame, d1: pd.DataFrame, mp: MTFParams = MTFParams()
             if side == "short" and h[j] >= sl:
                 exit_i, exit_px = j, max(sl, o[j])
                 break
+            if mp.be_r > 0 and not be_done:     # appliqué en fin de bougie : pas d'avantage de « prévoir l'avenir »
+                if side == "long" and h[j] - entry >= mp.be_r * risk:
+                    sl, be_done = max(sl, entry), True
+                elif side == "short" and entry - l[j] >= mp.be_r * risk:
+                    sl, be_done = min(sl, entry), True
         if exit_i is None:
             exit_i = min(n, entry_i + mp.max_bars) - 1
             exit_px = c[exit_i]
