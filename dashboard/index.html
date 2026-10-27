@@ -29,7 +29,7 @@ body{background:radial-gradient(900px 520px at 12% -8%,var(--glow1),transparent 
 button{font:inherit}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .pad{padding:20px 22px}
-.h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+.h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;flex-wrap:wrap}
 .h h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}
 .ico{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 
@@ -41,8 +41,8 @@ button{font:inherit}
 .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:var(--ink);box-shadow:0 10px 26px rgba(52,211,153,.24)}
 .btn.primary:hover:not(:disabled){box-shadow:0 14px 32px rgba(52,211,153,.34)}
 .btn.danger{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,transparent)} .btn.danger:hover:not(:disabled){background:color-mix(in srgb,var(--red) 10%,transparent)}
-.btn.ghost{background:transparent} .btn.sm{padding:7px 12px;font-size:12.5px;border-radius:10px} .btn.block{width:100%;padding:13px 16px;font-size:14.5px}
-.btn:focus-visible,input:focus-visible,a:focus-visible,.chip:focus-visible,.nav button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.btn.sm{padding:7px 12px;font-size:12.5px;border-radius:10px} .btn.block{width:100%;padding:13px 16px;font-size:14.5px}
+.btn:focus-visible,input:focus-visible,a:focus-visible,.fchip:focus-visible,.nav button:focus-visible,.seg button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
@@ -74,7 +74,7 @@ button{font:inherit}
 .or{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:12px;margin:16px 0} .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 
 /* ---- coque de l'app ---- */
-.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.app{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}
 .side{position:sticky;top:0;height:100vh;padding:22px 14px;display:flex;flex-direction:column;gap:4px;background:var(--glass);border-right:1px solid var(--line);backdrop-filter:blur(18px)}
 .brand{display:flex;align-items:center;gap:12px;padding:2px 8px 20px} .brand .logo{width:38px;height:38px;border-radius:12px}
 .brand b{font-size:17px;letter-spacing:.2px} .brand small{display:block;color:var(--dim);font-size:11.5px;margin-top:-2px}
@@ -83,14 +83,12 @@ button{font:inherit}
 .nav button:hover{background:color-mix(in srgb,var(--text) 6%,transparent);color:var(--text)}
 .nav button.on{background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent)}
 .nav button.on::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
-.nav .cnt{margin-left:auto;font-size:11px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);border-radius:99px;padding:1px 8px}
-.side .foot{margin-top:auto;padding:12px 10px;border-top:1px solid var(--line);color:var(--dim);font-size:11.5px;line-height:1.5}
 .content{min-width:0}
 .bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 30px;background:var(--glass);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
 .bar h1{margin:0;font-size:19px;letter-spacing:-.3px}
 .bar .r{display:flex;align-items:center;gap:10px}
 .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;border:1px solid var(--line2);background:var(--card-solid);font-size:12.5px;font-weight:650;color:var(--muted)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--dim)} .dot.on{background:var(--green);box-shadow:0 0 0 0 var(--green);animation:pl 1.8s ease-out infinite}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim)} .dot.on{background:var(--green);animation:pl 1.8s ease-out infinite}
 @keyframes pl{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 55%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
 @media (prefers-reduced-motion:reduce){.dot.on,.ring.on::after{animation:none}}
 .icobtn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line2);background:var(--card-solid);color:var(--muted);display:grid;place-items:center;cursor:pointer}
@@ -104,21 +102,7 @@ button{font:inherit}
 main{padding:26px 30px 60px;max-width:1320px}
 .view{display:none;animation:in .25s ease} .view.on{display:block}
 @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.grid{display:grid;gap:18px}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}.g2b{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}.g2e{grid-template-columns:1fr 1fr}
-.feed,.log{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
-/* fil d'activité : une ligne courte par événement */
-.feed{display:flex;flex-direction:column;max-height:330px;overflow:auto;margin:0 -6px;padding:0 6px}
-.ev{display:grid;grid-template-columns:44px 10px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 4px;border-top:1px solid var(--line)}
-.ev:first-child{border-top:0}
-.ev .tm{color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums;padding-top:1px}
-.ev .pt{width:9px;height:9px;border-radius:50%;margin-top:6px;background:var(--dim)}
-.ev .tx b{display:block;font-size:13.5px;font-weight:650}.ev .tx small{display:block;color:var(--muted);font-size:12.3px;margin-top:1px}
-.ev .st{font-size:11px;font-weight:750;padding:3px 9px;border-radius:99px;white-space:nowrap;margin-top:1px;background:color-mix(in srgb,var(--dim) 18%,transparent);color:var(--muted)}
-.ev.ok .pt{background:var(--green)}.ev.ok .st{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
-.ev.ref .pt{background:var(--amber)}.ev.ref .st{background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber)}
-.ev.sig .pt{background:var(--blue)}.ev.sig .st{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
-.ev.err .pt{background:var(--red)}.ev.err .st{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
-.ev.sys .pt{background:var(--text)}.ev.idle .tx b{color:var(--muted);font-weight:600}
+.grid{display:grid;gap:18px}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .mb{margin-bottom:18px}
 
 /* ---- hero / kpi ---- */
@@ -131,30 +115,39 @@ main{padding:26px 30px 60px;max-width:1320px}
 @keyframes rg{from{transform:scale(.8);opacity:.6}to{transform:scale(1.25);opacity:0}}
 .state .t{font-size:22px;font-weight:750;letter-spacing:-.4px}.state .s{color:var(--muted);margin-top:2px}
 .actions{display:flex;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
-.kpi{padding:18px 20px;position:relative;overflow:hidden}
+.kpi{padding:18px 20px}
 .kpi .l{color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
 .kpi .v{font-size:29px;font-weight:760;letter-spacing:-.8px;margin:8px 0 2px;font-variant-numeric:tabular-nums}
-.kpi .n{color:var(--muted);font-size:12.5px} .kpi svg.sp{position:absolute;right:14px;bottom:14px;width:92px;height:36px;opacity:.9}
-.chartbox{position:relative} canvas{width:100%;height:270px;display:block}
-.tip{position:absolute;pointer-events:none;background:var(--card-solid);border:1px solid var(--line2);border-radius:11px;padding:8px 11px;font-size:12.5px;box-shadow:var(--shadow);transform:translate(-50%,-115%);white-space:nowrap;display:none;z-index:3}
-.cross{position:absolute;top:14px;bottom:30px;width:1px;background:var(--line2);pointer-events:none;display:none}
+.kpi .n{color:var(--muted);font-size:12.5px}
 .empty{padding:38px 18px;text-align:center;color:var(--muted)} .empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
 .empty .ico{width:34px;height:34px;color:var(--dim);margin-bottom:10px}
 
-/* ---- tables / journal ---- */
-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-th{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--dim);text-align:left;font-weight:700;padding:0 14px 10px}
-td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:right}
-.side-tag{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:7px;letter-spacing:.6px}.side-tag.b{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}.side-tag.s{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+/* ---- journal ---- */
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:11px;padding:3px;background:color-mix(in srgb,var(--bg2) 60%,transparent)}
+.seg button{border:0;background:transparent;color:var(--muted);padding:6px 14px;border-radius:8px;font-weight:650;font-size:12.5px;cursor:pointer}
+.seg button.on{background:var(--text);color:var(--bg)}
+.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .fchip{border:1px solid var(--line2);background:transparent;color:var(--muted);padding:6px 13px;border-radius:99px;font-weight:650;font-size:12.5px;cursor:pointer}
 .fchip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
-.log{height:520px;overflow:auto;padding:8px 6px;font-size:12.3px;line-height:1.7;border-radius:14px;background:color-mix(in srgb,var(--bg2) 75%,transparent);border:1px solid var(--line)}
-.log.mini{height:auto;max-height:300px}
+.search{width:200px;padding:8px 12px;font-size:13px}
+.log{height:520px;overflow:auto;padding:8px 6px;font-size:12.6px;line-height:1.7;border-radius:14px;background:color-mix(in srgb,var(--bg2) 75%,transparent);border:1px solid var(--line)}
+.feed,.log{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
 .row{display:flex;gap:12px;padding:1px 12px 1px 11px;border-left:2px solid transparent;white-space:pre-wrap;word-break:break-word}
 .row .tm{color:var(--dim);flex:none}.row.sig{border-color:var(--green)}.row.sig .m{color:var(--green)}.row.ref{border-color:var(--amber)}.row.ref .m{color:var(--amber)}
 .row.err{border-color:var(--red)}.row.err .m{color:var(--red)}.row.pass .m{color:var(--dim)}.row.sys .m{color:var(--blue)}
-.search{max-width:230px;padding:8px 12px;font-size:13px}
+.feed{display:flex;flex-direction:column;height:520px;overflow:auto;margin:0 -6px;padding:0 6px}
+.ev{display:grid;grid-template-columns:44px 10px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 4px;border-top:1px solid var(--line)}
+.ev:first-child{border-top:0}
+.ev .tm{color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums;padding-top:1px}
+.ev .pt{width:9px;height:9px;border-radius:50%;margin-top:6px;background:var(--dim)}
+.ev .tx b{display:block;font-size:13.5px;font-weight:650}.ev .tx small{display:block;color:var(--muted);font-size:12.3px;margin-top:1px}
+.ev .st{font-size:11px;font-weight:750;padding:3px 9px;border-radius:99px;white-space:nowrap;margin-top:1px;background:color-mix(in srgb,var(--dim) 18%,transparent);color:var(--muted)}
+.ev.ok .pt{background:var(--green)}.ev.ok .st{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
+.ev.ref .pt{background:var(--amber)}.ev.ref .st{background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber)}
+.ev.sig .pt{background:var(--blue)}.ev.sig .st{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
+.ev.err .pt{background:var(--red)}.ev.err .st{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.ev.sys .pt{background:var(--text)}.ev.idle .tx b{color:var(--muted);font-weight:600}
 
 /* ---- bilan / comptes / réglages ---- */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
@@ -164,7 +157,12 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
 .track{height:8px;border-radius:99px;background:color-mix(in srgb,var(--bg2) 80%,transparent);position:relative;overflow:hidden}.fill{position:absolute;top:0;bottom:0;border-radius:99px}
 .acc-hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}.acc-hero .ava{width:64px;height:64px;border-radius:19px;font-size:22px}
 .kv{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}.formgrid small{display:block;color:var(--dim);font-size:11.5px;margin-top:5px;line-height:1.35}
+.g2e{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.setrow{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:18px;align-items:center;padding:16px 0;border-top:1px solid var(--line)}
+.setrow:first-of-type{border-top:0;padding-top:4px}
+.setrow b{display:block;font-size:14.5px}.setrow small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px;line-height:1.45}
+.setrow .ex{color:var(--accent);font-weight:650}
+.suffix{position:relative}.suffix .inp{padding-right:34px;text-align:right}.suffix span{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:650}
 
 /* ---- fenêtres / messages ---- */
 .veil{position:fixed;inset:0;background:rgba(3,6,12,.6);backdrop-filter:blur(4px);display:none;place-items:center;z-index:50;padding:20px}.veil.show{display:grid}
@@ -173,12 +171,11 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,24px);background:var(--text);color:var(--bg);padding:12px 20px;border-radius:13px;font-weight:650;opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:90vw;box-shadow:var(--shadow)}
 .toast.show{opacity:1;transform:translate(-50%,0)}.toast.err{background:var(--red);color:#fff}
 
-@media (max-width:1100px){.app{grid-template-columns:76px minmax(0,1fr)}.nav button span,.brand div,.side .foot,.nav .cnt{display:none}.nav button{justify-content:center}.nav button.on::before{left:-14px}
-  .g4{grid-template-columns:repeat(2,1fr)}.g2,.g2b{grid-template-columns:1fr}.kv{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:1100px){.app{grid-template-columns:76px minmax(0,1fr)}.nav button span,.brand div{display:none}.nav button{justify-content:center}.g4{grid-template-columns:repeat(2,1fr)}.kv{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:760px){.lwrap{grid-template-columns:1fr}.lhero{display:none}.app{grid-template-columns:1fr}
-  .side{position:fixed;bottom:0;top:auto;height:auto;width:100%;flex-direction:row;padding:6px 8px;z-index:40;border-right:0;border-top:1px solid var(--line)}.brand,.side .foot{display:none}
+  .side{position:fixed;bottom:0;top:auto;height:auto;width:100%;flex-direction:row;padding:6px 8px;z-index:40;border-right:0;border-top:1px solid var(--line)}.brand{display:none}
   .nav{grid-auto-flow:column;width:100%}.nav button{padding:10px 0}.nav button.on::before{display:none}main{padding:18px 16px 100px}.bar{padding:12px 16px}.menu{right:12px}
-  .g4,.g2e,.formgrid,.stats{grid-template-columns:1fr}.bar-row{grid-template-columns:90px 1fr 70px}}
+  .g4,.g2e,.stats{grid-template-columns:1fr}.bar-row{grid-template-columns:90px 1fr 70px}.setrow{grid-template-columns:1fr}.search{width:100%}}
 </style>
 </head>
 <body>
@@ -193,8 +190,7 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
         <p>Rebond sur lignes de tendance, analysé sur 24 marchés, à chaque heure.</p>
       </div>
       <ul class="points">
-        <li><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Chaque ordre part avec son stop-loss, posé chez le broker.</li>
-        <li><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Compte démo uniquement : un compte réel est refusé.</li>
+        <li><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Chaque ordre part avec son stop-loss.</li>
         <li><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Ton mot de passe n'est jamais enregistré.</li>
       </ul>
     </div>
@@ -208,13 +204,10 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
     <div class="brand"><div class="logo"><svg class="ico" style="width:20px;height:20px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg></div><div><b>trendbot</b><small>H1 · 24 marchés</small></div></div>
     <nav class="nav" id="nav">
       <button data-v="dash"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Tableau de bord</span></button>
-      <button data-v="pos"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Positions</span><em class="cnt" id="navPos">0</em></button>
-      <button data-v="log"><svg class="ico" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg><span>Journal</span></button>
       <button data-v="bilan"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg><span>Bilan</span></button>
       <button data-v="set"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Réglages</span></button>
       <button data-v="acc"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Comptes</span></button>
     </nav>
-    <div class="foot">Mode démo uniquement.<br>Les stop-loss restent chez le broker même si le bot s'arrête.</div>
   </aside>
 
   <div class="content">
@@ -229,7 +222,7 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
     <div class="card menu hidden" id="menu"></div>
 
     <main>
-      <!-- Tableau de bord -->
+      <!-- Tableau de bord : état + journal complet -->
       <section class="view" id="v-dash">
         <div class="card hero mb">
           <div class="state"><div class="ring" id="ring"><svg class="ico" style="width:24px;height:24px" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
@@ -241,47 +234,39 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
         </div>
         <div class="grid g4 mb">
           <div class="card kpi"><div class="l">Capital du compte</div><div class="v" id="kCap">–</div><div class="n" id="kCapN">&nbsp;</div></div>
-          <div class="card kpi"><div class="l">Gains · 30 jours</div><div class="v" id="kNet">–</div><div class="n" id="kNetN">&nbsp;</div><svg class="sp" id="kSpark" viewBox="0 0 92 36"></svg></div>
-          <div class="card kpi"><div class="l">Positions ouvertes</div><div class="v" id="kPos">–</div><div class="n">stops posés chez le broker</div></div>
+          <div class="card kpi"><div class="l">Gains · 30 jours</div><div class="v" id="kNet">–</div><div class="n" id="kNetN">&nbsp;</div></div>
+          <div class="card kpi"><div class="l">Positions ouvertes</div><div class="v" id="kPos">–</div><div class="n" id="kPosN">&nbsp;</div></div>
           <div class="card kpi"><div class="l">Signaux · session</div><div class="v" id="kSig">0</div><div class="n" id="kSigN">aucun pour l'instant</div></div>
         </div>
-        <div class="grid g2b">
-          <div class="card pad">
-            <div class="h"><h2>Activité récente</h2><button class="btn sm ghost" data-go="log">Journal complet</button></div>
-            <div class="feed" id="recent"></div>
+        <div class="card pad">
+          <div class="h">
+            <div class="seg" id="seg"><button class="on" data-m="full">Complet</button><button data-m="sum">Résumé</button></div>
+            <div class="tools" id="tools">
+              <div class="chips" id="chips"><button class="fchip on" data-f="all">Tout</button><button class="fchip" data-f="sig">Signaux</button><button class="fchip" data-f="ref">Refus</button><button class="fchip" data-f="err">Erreurs</button></div>
+              <input class="inp search" id="q" placeholder="Rechercher…" aria-label="Rechercher dans le journal">
+            </div>
           </div>
-          <div class="card pad">
-            <div class="h"><h2>Gains cumulés</h2><span class="muted" id="chartNote"></span></div>
-            <div class="chartbox" id="chartBox"><canvas id="chart" role="img" aria-label="Gains cumulés du bot sur 30 jours"></canvas><div class="cross" id="cross"></div><div class="tip" id="tip"></div></div>
-            <div class="empty hidden" id="chartEmpty"><svg class="ico" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/></svg><b>Aucun trade fermé</b></div>
-          </div>
+          <div class="log mono" id="log" tabindex="0" aria-label="Journal du bot"></div>
+          <div class="feed hidden" id="recent"></div>
         </div>
       </section>
-
-      <!-- Positions -->
-      <section class="view" id="v-pos"><div class="card pad"><div class="h"><h2>Positions ouvertes par le bot</h2><span class="muted" id="posNote"></span></div><div id="posBox"></div></div></section>
-
-      <!-- Journal -->
-      <section class="view" id="v-log"><div class="card pad">
-        <div class="h"><div class="chips" id="chips">
-          <button class="fchip on" data-f="all">Tout</button><button class="fchip" data-f="sig">Signaux</button><button class="fchip" data-f="ref">Refus</button><button class="fchip" data-f="err">Erreurs</button></div>
-          <input class="inp search" id="q" placeholder="Rechercher…" aria-label="Rechercher dans le journal"></div>
-        <div class="log mono" id="log" tabindex="0" aria-label="Journal du bot"></div></div></section>
 
       <!-- Bilan -->
       <section class="view" id="v-bilan"><div class="card pad"><div class="h"><h2>Bilan · 30 derniers jours</h2></div><div id="bilan"></div></div></section>
 
       <!-- Réglages -->
-      <section class="view" id="v-set"><div class="grid g2e">
-        <div class="card pad"><div class="h"><h2>Capital et risque</h2></div><div class="formgrid" id="formA"></div></div>
-        <div class="card pad"><div class="h"><h2>Limites de sécurité</h2></div><div class="formgrid" id="formB"></div></div>
-      </div>
-      <div style="display:flex;gap:14px;align-items:center;margin-top:18px;flex-wrap:wrap"><button class="btn primary" id="bSave">Enregistrer</button><span class="note">Pris en compte au prochain démarrage du bot.</span></div></section>
+      <section class="view" id="v-set">
+        <div class="card pad" style="max-width:820px">
+          <div class="h"><h2>Réglages du bot</h2><span class="note" id="setCap"></span></div>
+          <div id="setRows"></div>
+          <div style="display:flex;gap:14px;align-items:center;margin-top:14px;flex-wrap:wrap"><button class="btn primary" id="bSave">Enregistrer</button><span class="note">S'applique au prochain démarrage du bot.</span></div>
+        </div>
+      </section>
 
       <!-- Comptes -->
       <section class="view" id="v-acc">
         <div class="card pad mb" id="accCard"></div>
-        <div class="grid g2e">
+        <div class="g2e">
           <div class="card pad"><div class="h"><h2>Connecter un autre compte</h2></div><div id="accForm"></div></div>
           <div class="card pad"><div class="h"><h2>Comptes récents</h2></div><div id="accRecent"></div></div>
         </div>
@@ -291,10 +276,10 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
 </div>
 
 <div class="veil" id="vTrade" role="dialog" aria-modal="true"><div class="card modal"><h3>Démarrer le bot ?</h3>
-  <p>Le bot va ouvrir de <b>vrais ordres</b> sur le compte démo connecté. Il refuse automatiquement un compte réel.</p><p>Chaque ordre part avec son stop-loss, posé chez le broker.</p>
+  <p>Le bot va ouvrir de <b>vrais ordres</b> sur le compte démo connecté.</p>
   <div class="btns"><button class="btn" data-close>Annuler</button><button class="btn primary" id="tYes">Oui, démarrer</button></div></div></div>
 <div class="veil" id="vOut" role="dialog" aria-modal="true"><div class="card modal"><h3>Se déconnecter ?</h3>
-  <p>Le tableau de bord se détache de MetaTrader 5. MT5 reste ouvert et tes positions gardent leur stop-loss.</p>
+  <p>MetaTrader 5 reste ouvert.</p>
   <div class="btns"><button class="btn" data-close>Annuler</button><button class="btn danger" id="oYes">Se déconnecter</button></div></div></div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -302,8 +287,8 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
 const TOKEN = "__TOKEN__";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let S = null, view = "dash", LOGS = [], lastId = 0, filter = "all", query = "", counts = {sig:0, ref:0};
-const TITLES = {dash:"Tableau de bord", pos:"Positions", log:"Journal", bilan:"Bilan", set:"Réglages", acc:"Comptes"};
+let S = null, view = "dash", LOGS = [], lastId = 0, filter = "all", query = "", jmode = "full", counts = {sig:0, ref:0};
+const TITLES = {dash:"Tableau de bord", bilan:"Bilan", set:"Réglages", acc:"Comptes"};
 const ICO = {eye:'<svg class="ico" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   out:'<svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>',
   swap:'<svg class="ico" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>'};
@@ -326,17 +311,16 @@ const initials = a => a ? ((a.name || "").trim().split(/\s+/).map(w => w[0]).joi
 function go(v){ if(!TITLES[v]) v = "dash"; view = v; location.hash = v;
   document.querySelectorAll(".view").forEach(e => e.classList.toggle("on", e.id === "v-" + v));
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
-  $("title").textContent = TITLES[v]; $("menu").classList.add("hidden");
-  if(v === "log"){ renderLog(); } if(S) draw(); }
+  $("title").textContent = TITLES[v]; $("menu").classList.add("hidden"); if(v === "dash") renderJournal(); }
 $("nav").onclick = e => { const b = e.target.closest("button"); if(b) go(b.dataset.v); };
-document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if(g) go(g.dataset.go);
+document.addEventListener("click", e => {
   if(!e.target.closest("#menu") && !e.target.closest("#acctBtn")) $("menu").classList.add("hidden");
   if(e.target.closest("[data-close]") || e.target.classList.contains("veil")) document.querySelectorAll(".veil").forEach(v => v.classList.remove("show")); });
 document.addEventListener("keydown", e => { if(e.key === "Escape"){ document.querySelectorAll(".veil").forEach(v => v.classList.remove("show")); $("menu").classList.add("hidden"); } });
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(h && h !== view) go(h); });
 
 /* ---------- thème ---------- */
-function setTheme(t){ if(t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; try{ t ? localStorage.setItem("tb_theme", t) : localStorage.removeItem("tb_theme"); }catch(e){} if(S) draw(); }
+function setTheme(t){ if(t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; try{ t ? localStorage.setItem("tb_theme", t) : localStorage.removeItem("tb_theme"); }catch(e){} }
 try{ const t = localStorage.getItem("tb_theme"); if(t) document.documentElement.dataset.theme = t; }catch(e){}   /* sombre par défaut, clair au choix */
 $("theme").onclick = () => setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
 
@@ -348,7 +332,7 @@ function connectForm(id, profiles){
     <div class="field"><label for="${id}P">Mot de passe</label><div class="pw"><input class="inp" id="${id}P" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" id="${id}Eye" aria-label="Afficher le mot de passe">${ICO.eye}</button></div></div>
     <div class="field"><label for="${id}S">Serveur</label><input class="inp" id="${id}S" list="${id}SL" value="${esc(profiles[0]?.server || "Deriv-Demo")}" autocomplete="off"><datalist id="${id}SL">${servers.map(s => `<option value="${esc(s)}">`).join("")}</datalist></div>
     <button class="btn primary block" id="${id}Go" type="button">Se connecter</button>
-    <p class="note" style="margin:12px 0 0">Le mot de passe sert uniquement à ouvrir la session dans MetaTrader 5. Il n'est <b>jamais</b> enregistré, ni journalisé.</p>`;
+    <p class="note" style="margin:12px 0 0">Le mot de passe n'est jamais enregistré.</p>`;
 }
 function bindForm(id){
   const g = $(id + "Go"), err = $(id + "Err");
@@ -356,14 +340,14 @@ function bindForm(id){
   const submit = async () => {
     err.classList.add("hidden"); g.disabled = true; const old = g.innerHTML; g.innerHTML = '<span class="spin"></span> Connexion…';
     try{ const j = await api("/api/connect", {login:$(id + "L").value, password:$(id + "P").value, server:$(id + "S").value});
-      $(id + "P").value = ""; toast("Connecté au compte " + j.account.login + (j.account.demo ? " (démo)" : " (RÉEL)")); await refresh(); go("dash"); }
+      $(id + "P").value = ""; toast("Connecté au compte " + j.account.login); await refresh(); go("dash"); }
     catch(e){ err.textContent = e.message; err.classList.remove("hidden"); }
     finally{ g.disabled = false; g.innerHTML = old; }
   };
   g.onclick = submit; [id + "L", id + "P", id + "S"].forEach(i => $(i).addEventListener("keydown", e => { if(e.key === "Enter") submit(); }));
 }
-function recentList(profiles, current, mode){
-  if(!profiles.length) return `<p class="note">Aucun compte mémorisé pour l'instant. Seuls le numéro et le serveur sont retenus, jamais le mot de passe.</p>`;
+function recentList(profiles, current){
+  if(!profiles.length) return `<p class="note">Aucun compte mémorisé pour l'instant.</p>`;
   return `<div class="recent">` + profiles.map(p => `<div class="rec" role="button" tabindex="0" data-pick="${esc(p.login)}" data-server="${esc(p.server)}">
       <span class="ava ${p.demo === false ? "real" : ""}">${esc(String(p.login).slice(-2))}</span>
       <div><b>${esc(p.login)}</b> ${p.demo === false ? '<span class="badge real">RÉEL</span>' : '<span class="badge">DÉMO</span>'}${current === p.login ? ' <span class="muted">· connecté</span>' : ""}<div class="note">${esc(p.server)}</div></div>
@@ -402,48 +386,46 @@ function render(s){
   $("mSwap").onclick = () => go("acc"); $("mOut").onclick = () => { $("menu").classList.add("hidden"); $("vOut").classList.add("show"); };
   $("botDot").className = "dot" + (run ? " on" : ""); $("botTxt").textContent = run ? "Bot en marche" : "Bot arrêté";
   $("ring").className = "ring" + (run ? " on" : ""); $("stTitle").textContent = run ? "Bot en marche" : "Bot arrêté";
-  if(run){ const since = s.bot.started_at ? " · démarré à " + new Date(s.bot.started_at*1000).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) : "";
+  if(run){ const since = s.bot.started_at ? "Démarré à " + new Date(s.bot.started_at*1000).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) + " · " : "";
     const nx = new Date(); nx.setMinutes(0,5,0); nx.setHours(nx.getHours() + 1); const mins = Math.max(0, Math.round((nx - new Date())/60000));
-    $("stSub").textContent = s.bot.mode.charAt(0).toUpperCase() + s.bot.mode.slice(1) + since + " · prochain passage dans ~" + mins + " min";
+    $("stSub").textContent = since + "prochain passage dans ~" + mins + " min";
   } else $("stSub").textContent = a.demo ? "Prêt à démarrer." : "Compte réel détecté : le bot refusera de trader.";
   $("bTrade").disabled = run; $("bStop").disabled = !run;
 
   const sm = s.summary;
   $("kCap").textContent = money(a.equity); $("kCapN").textContent = "solde " + money(a.balance);
   $("kNet").innerHTML = sm ? `<span class="${cls(sm.net)}">${signed(sm.net)}</span>` : "–";
-  $("kNetN").textContent = sm ? `${sm.trades} trade(s) · ${sm.trades ? Math.round(sm.wins/sm.trades*100) : 0} % gagnants` : "en attente";
-  $("kPos").textContent = `${s.positions.length} / ${s.settings.MAX_POSITIONS}`; $("navPos").textContent = s.positions.length;
-  sparkline($("kSpark"), (s.series || []).map(p => p[1]));
-  renderPositions(); renderBilan(); renderForm(); renderAccounts(); draw();
-}
-function sparkline(svg, vals){
-  if(vals.length < 2){ svg.innerHTML = ""; return; }
-  const mn = Math.min(0, ...vals), mx = Math.max(0, ...vals), W = 92, H = 36, p = 3;
-  const pts = vals.map((v, i) => [p + i/(vals.length-1)*(W - 2*p), H - p - (v - mn)/((mx - mn) || 1)*(H - 2*p)]);
-  const col = vals[vals.length-1] >= 0 ? "var(--green)" : "var(--red)";
-  svg.innerHTML = `<path d="M${pts.map(q => q.map(n => n.toFixed(1)).join(",")).join(" L")}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
-}
-function renderPositions(){
-  const p = S.positions; $("posNote").textContent = p.length ? `${p.length} ouverte(s)` : "";
-  $("posBox").innerHTML = !p.length ? `<div class="empty"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5"/></svg><b>Aucune position ouverte</b>Le bot en ouvre une dès qu'un signal passe tous ses filtres.</div>` :
-    `<table><thead><tr><th>Marché</th><th>Sens</th><th class="r">Lots</th><th class="r">Entrée</th><th class="r">Prix</th><th class="r">Stop</th><th class="r">Gain / perte</th></tr></thead><tbody>` +
-    p.map(x => `<tr><td><b>${esc(x.symbol)}</b></td><td><span class="side-tag ${x.side === "ACHAT" ? "b" : "s"}">${x.side}</span></td><td class="r">${x.lots}</td><td class="r mono">${x.open}</td><td class="r mono">${x.price}</td><td class="r mono">${x.sl}</td><td class="r ${cls(x.pnl)}"><b>${signed(x.pnl)}</b></td></tr>`).join("") + `</tbody></table>`;
+  $("kNetN").textContent = sm ? `${sm.trades} trade(s) fermé(s)` : "en attente";
+  $("kPos").textContent = `${s.positions.length} / ${s.settings.MAX_POSITIONS}`;
+  $("kPosN").textContent = s.positions.length ? s.positions.map(p => p.symbol.replace(/micro| Index/g, "") + " " + (p.side === "ACHAT" ? "↑" : "↓")).join(" · ") : "aucune";
+  renderBilan(); renderSettings(); renderAccounts();
 }
 function renderBilan(){
-  const sm = S.summary; if(!sm || !sm.trades){ $("bilan").innerHTML = `<div class="empty"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><b>Pas encore de trades fermés</b>Le bilan se remplit au fil du temps.</div>`; return; }
+  const sm = S.summary; if(!sm || !sm.trades){ $("bilan").innerHTML = `<div class="empty"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><b>Pas encore de trades fermés</b></div>`; return; }
   const mx = Math.max(...sm.by_market.map(m => Math.abs(m[2])), 0.01);
   $("bilan").innerHTML = `<div class="stats"><div class="stat"><div class="l">Trades fermés</div><div class="v">${sm.trades}</div></div><div class="stat"><div class="l">Gagnants</div><div class="v">${Math.round(sm.wins/sm.trades*100)} %</div></div>
     <div class="stat"><div class="l">Facteur de gain</div><div class="v">${sm.pf ?? "–"}</div></div><div class="stat"><div class="l">Net</div><div class="v ${cls(sm.net)}">${signed(sm.net)}</div></div>
     <div class="stat"><div class="l">Gain moyen</div><div class="v up">${signed(sm.avg_win)}</div></div><div class="stat"><div class="l">Perte moyenne</div><div class="v down">${signed(sm.avg_loss)}</div></div></div>` +
     sm.by_market.map(m => { const w = Math.abs(m[2])/mx*50, pos = m[2] >= 0;
-      return `<div class="bar-row"><span>${esc(m[0].replace(" Index",""))}<span class="dim"> · ${m[1]}</span></span><div class="track"><div class="fill" style="${pos ? `left:50%;width:${w}%;background:var(--green)` : `right:50%;width:${w}%;background:var(--red)`}"></div></div><span class="${cls(m[2])}" style="text-align:right"><b>${signed(m[2])}</b></span></div>`; }).join("");
+      return `<div class="bar-row"><span>${esc(m[0].replace(" Index","").replace("micro",""))}<span class="dim"> · ${m[1]}</span></span><div class="track"><div class="fill" style="${pos ? `left:50%;width:${w}%;background:var(--green)` : `right:50%;width:${w}%;background:var(--red)`}"></div></div><span class="${cls(m[2])}" style="text-align:right"><b>${signed(m[2])}</b></span></div>`; }).join("");
 }
-const FA = [["RISK_PCT","Risque par trade (%)","perte visée si le stop est touché"],["MAX_RISK_PCT","Risque max au lot minimum (%)","au-delà, le trade est refusé"]];
-const FB = [["MAX_POSITIONS","Positions maximum","ouvertes en même temps"],["DAILY_LOSS_STOP_PCT","Arrêt du jour (%)","plus de trade si le capital baisse de ce %"],["MAX_SPREAD_R","Spread maximum (R)","refus si le coût dépasse ce multiple du stop"]];
-function renderForm(){
-  const st = S.settings, key = JSON.stringify(st); if($("formA").dataset.v === key || document.activeElement?.closest?.("#v-set")) return; $("formA").dataset.v = key;
-  const mk = L => L.map(([k, l, h]) => `<div class="field"><label for="f_${k}">${l}</label><input class="inp" id="f_${k}" data-k="${k}" inputmode="decimal" value="${st[k] == null ? "" : st[k]}"><small>${h}</small></div>`).join("");
-  $("formA").innerHTML = mk(FA); $("formB").innerHTML = mk(FB);
+
+/* ---------- réglages en langage simple ---------- */
+const SET = [
+  {k:"MAX_POSITIONS", t:"Trades ouverts en même temps", u:"", f:1, d:() => "Le bot n'ouvre pas un nouveau trade s'il y en a déjà autant d'ouverts."},
+  {k:"RISK_PCT", t:"Risque par trade", u:"%", f:1, d:v => "Ce que tu perds, au maximum, quand un trade touche son stop." + ex(v)},
+  {k:"MAX_RISK_PCT", t:"Risque maximum accepté", u:"%", f:1, d:v => "Parfois le plus petit lot possible est déjà trop gros pour ton capital. S'il ferait perdre plus que ça, le bot ne prend pas le trade." + ex(v)},
+  {k:"DAILY_LOSS_STOP_PCT", t:"Pause après une mauvaise journée", u:"%", f:1, d:v => "Si le bot perd autant dans la journée, il n'ouvre plus rien jusqu'à demain." + ex(v)},
+  {k:"MAX_SPREAD_R", t:"Frais d'entrée maximum", u:"%", f:100, d:() => "Le spread est le coût payé à l'ouverture d'un trade. S'il dépasse ce % de la distance jusqu'au stop, le trade est refusé."}];
+const ex = v => (S && S.account && v > 0) ? ` <span class="ex">≈ ${money(S.account.equity * v / 100)} sur ton capital actuel</span>` : "";
+function renderSettings(){
+  const st = S.settings, key = JSON.stringify([st, S.account && Math.round(S.account.equity)]); const box = $("setRows");
+  if(box.dataset.v === key || document.activeElement?.closest?.("#v-set")) return; box.dataset.v = key;
+  $("setCap").textContent = S.account ? "Capital actuel : " + money(S.account.equity) : "";
+  box.innerHTML = SET.map(r => { const val = st[r.k] == null ? "" : +(st[r.k] * r.f).toFixed(2);
+    return `<div class="setrow"><div><b>${r.t}</b><small id="d_${r.k}">${r.d(val)}</small></div>
+      <div class="suffix"><input class="inp" data-k="${r.k}" inputmode="decimal" value="${val}" aria-label="${r.t}"><span>${r.u}</span></div></div>`; }).join("");
+  box.querySelectorAll("input").forEach(i => i.addEventListener("input", () => { const r = SET.find(x => x.k === i.dataset.k); $("d_" + r.k).innerHTML = r.d(parseFloat(i.value.replace(",", "."))); }));
 }
 function renderAccounts(){
   const a = S.account; if(!a) return; const key = JSON.stringify([a, S.profiles, S.bot.running]); if($("accCard").dataset.v === key || document.activeElement?.closest?.("#v-acc")) return; $("accCard").dataset.v = key;
@@ -452,44 +434,12 @@ function renderAccounts(){
     <div style="margin-left:auto"><button class="btn danger" id="accOut" ${S.bot.running ? "disabled title='Arrête le bot avant de te déconnecter'" : ""}>${ICO.out} Se déconnecter</button></div></div>
     <div class="kv"><div class="stat"><div class="l">Solde</div><div class="v">${money(a.balance)}</div></div><div class="stat"><div class="l">Équité</div><div class="v">${money(a.equity)}</div></div>
       <div class="stat"><div class="l">Marge libre</div><div class="v ${a.margin_free < 0 ? "down" : ""}">${money(a.margin_free)}</div></div><div class="stat"><div class="l">Levier</div><div class="v">1:${a.leverage}</div></div></div>
-    ${S.bot.running ? '<p class="note" style="margin:14px 0 0">Arrête le bot pour changer de compte : il ne doit jamais changer de compte en plein trade.</p>' : ""}`;
+    ${S.bot.running ? '<p class="note" style="margin:14px 0 0">Arrête le bot pour changer de compte.</p>' : ""}`;
   $("accOut").onclick = () => $("vOut").classList.add("show");
   $("accForm").innerHTML = connectForm("ac", S.profiles); bindForm("ac");
   if(S.bot.running) $("acGo").disabled = true;
   $("accRecent").innerHTML = recentList(S.profiles, a.login); wireRecent($("accRecent"), "ac");
 }
-
-/* ---------- graphique interactif ---------- */
-let chartPts = [];
-function draw(){
-  if(!S || view !== "dash") return;
-  const series = S.series || [], c = $("chart"), empty = !series.length;
-  c.classList.toggle("hidden", empty); $("chartEmpty").classList.toggle("hidden", !empty); $("chartNote").textContent = empty ? "" : `${series.length} trades fermés`;
-  if(empty) return;
-  const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight; c.width = W*dpr; c.height = H*dpr;
-  const g = c.getContext("2d"); g.scale(dpr, dpr); const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
-  const pts = [[series[0][0] - 3600, 0], ...series], P = {l:56, r:18, t:14, b:28};
-  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]); const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys), pad = ((y1 - y0) || 1)*.14;
-  const X = t => P.l + (t - x0)/((x1 - x0) || 1)*(W - P.l - P.r), Y = val => H - P.b - (val - (y0 - pad))/(((y1 + pad) - (y0 - pad)) || 1)*(H - P.t - P.b);
-  chartPts = pts.map(p => ({x:X(p[0]), y:Y(p[1]), t:p[0], v:p[1]}));
-  g.font = "11px system-ui"; g.textBaseline = "middle";
-  for(let i = 0; i <= 4; i++){ const val = (y0 - pad) + ((y1 + pad) - (y0 - pad))*i/4, y = Y(val); g.strokeStyle = v("--line"); g.beginPath(); g.moveTo(P.l, y); g.lineTo(W - P.r, y); g.stroke();
-    g.fillStyle = v("--dim"); g.textAlign = "right"; g.fillText(val.toFixed((y1 - y0) < 10 ? 1 : 0), P.l - 10, y); }
-  g.strokeStyle = v("--line2"); g.setLineDash([4, 4]); g.beginPath(); g.moveTo(P.l, Y(0)); g.lineTo(W - P.r, Y(0)); g.stroke(); g.setLineDash([]);
-  const last = ys[ys.length - 1], col = last >= 0 ? v("--green") : v("--red");
-  const grad = g.createLinearGradient(0, P.t, 0, H - P.b); grad.addColorStop(0, col + "55"); grad.addColorStop(1, col + "00");
-  g.beginPath(); chartPts.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.lineTo(X(x1), Y(0)); g.lineTo(X(x0), Y(0)); g.closePath(); g.fillStyle = grad; g.fill();
-  g.beginPath(); chartPts.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.strokeStyle = col; g.lineWidth = 2.4; g.lineJoin = "round"; g.stroke();
-  const L = chartPts[chartPts.length - 1]; g.fillStyle = col; g.beginPath(); g.arc(L.x, L.y, 4.5, 0, 7); g.fill();
-  g.fillStyle = v("--dim"); [x0, x1].forEach((t, i) => { g.textAlign = i ? "right" : "left"; g.fillText(new Date(t*1000).toLocaleDateString("fr-FR", {day:"2-digit", month:"short"}), i ? W - P.r : P.l, H - 10); });
-}
-$("chartBox").addEventListener("mousemove", e => {
-  if(!chartPts.length) return; const r = $("chart").getBoundingClientRect(), mx = e.clientX - r.left;
-  const p = chartPts.reduce((b, q) => Math.abs(q.x - mx) < Math.abs(b.x - mx) ? q : b);
-  const cr = $("cross"), tp = $("tip"); cr.style.display = tp.style.display = "block"; cr.style.left = p.x + "px"; tp.style.left = p.x + "px"; tp.style.top = (p.y + 14) + "px";
-  tp.innerHTML = `<b class="${cls(p.v)}">${signed(p.v)}</b><div class="muted">${new Date(p.t*1000).toLocaleString("fr-FR", {day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"})}</div>`; });
-$("chartBox").addEventListener("mouseleave", () => { $("cross").style.display = $("tip").style.display = "none"; });
-window.addEventListener("resize", draw);
 
 /* ---------- journal ---------- */
 function classify(t){
@@ -498,21 +448,25 @@ function classify(t){
   if(/REFUSÉ|WARNING|aucune NOUVELLE entrée/.test(t)) return "ref";
   if(/^===|^---|arrêt|démarrage/.test(t)) return "sys"; return "pass";
 }
+/* « long » / « short » sont remplacés par « achat » / « vente » (anciens journaux du bot compris) */
+const fr = s => s.replace(/\bSIGNAL LONG\b/, "SIGNAL ACHAT").replace(/\bSIGNAL SHORT\b/, "SIGNAL VENTE").replace(/\bsignal long\b/, "signal achat").replace(/\bsignal short\b/, "signal vente")
+  .replace(/^ORDRE OK LONG\b/, "ORDRE OK ACHAT").replace(/^ORDRE OK SHORT\b/, "ORDRE OK VENTE").replace(/\] LONG\b/, "] ACHAT").replace(/\] SHORT\b/, "] VENTE");
 function rowEl(l){ const d = document.createElement("div"); d.className = "row " + l.k; d.innerHTML = `<span class="tm">${esc(l.tm)}</span><span class="m"></span>`; d.lastChild.textContent = l.msg; return d; }
 function renderLog(){
   const box = $("log"); box.textContent = ""; const q = query.toLowerCase();
-  LOGS.filter(l => (filter === "all" || l.k === filter) && (!q || l.msg.toLowerCase().includes(q))).slice(-500).forEach(l => box.appendChild(rowEl(l))); box.scrollTop = box.scrollHeight;
+  const items = LOGS.filter(l => (filter === "all" || l.k === filter) && (!q || l.msg.toLowerCase().includes(q))).slice(-600);
+  if(!items.length){ box.innerHTML = '<div class="empty" style="padding:50px 10px"><b>Rien pour l\'instant</b>Le journal se remplit dès que le bot démarre.</div>'; return; }
+  items.forEach(l => box.appendChild(rowEl(l))); box.scrollTop = box.scrollHeight;
 }
-/* ---------- fil d'activité : démarrage, arrêt, signaux et pourquoi ils sont pris ou non ---------- */
+/* résumé : une ligne par événement (démarrage, arrêt, signaux et pourquoi ils sont pris ou non) */
 let EV = [], pend = null, passHad = 0, ageMsg = false;
 const pushEv = e => { EV.push(e); if(EV.length > 300) EV = EV.slice(-200); return e; };
-const sideFr = s => /long/i.test(s) ? "Achat" : "Vente";
-const num = x => parseFloat(x);
+const sideFr = s => /achat/i.test(s) ? "Achat" : "Vente";
 function reasonFr(r){
   let m;
-  if((m = r.match(/lot minimum ([\d.]+) risquerait ([\d.]+) \(([\d.]+) %/))) return `Lot minimum trop gros : ${money(num(m[2]))} à risque (${m[3]} %)`;
+  if((m = r.match(/lot minimum ([\d.]+) risquerait ([\d.]+) \(([\d.]+) %/))) return `Lot minimum trop gros : ${money(parseFloat(m[2]))} à risque (${m[3]} %)`;
   if(/marge requise/.test(r)) return "Marge insuffisante";
-  if((m = r.match(/spread .*?= ([\d.]+) R/))) return `Spread trop cher (${m[1]} R du stop)`;
+  if((m = r.match(/spread .*?= ([\d.]+) R/))) return `Spread trop cher (${Math.round(parseFloat(m[1]) * 100)} % du stop)`;
   return r.slice(0, 80);
 }
 function ingest(msg, tm){
@@ -520,13 +474,13 @@ function ingest(msg, tm){
   if(/^=== démarrage/.test(msg)){ pend = null; passHad = 0; ageMsg = false; return pushEv({tm, k:"sys", t:"Bot démarré"}); }
   if(/^--- le bot s'est arrêté/.test(msg)){ pend = null; return pushEv({tm, k:"sys", t:"Bot arrêté"}); }
   if(/^--- passage/.test(msg)){ passHad = 0; ageMsg = false; return; }
-  if((m = msg.match(/^(.+?) : SIGNAL (LONG|SHORT) sur ligne (\w+).*?lots=([\d.]+) risque=([\d.]+)/))){
-    passHad++; pend = pushEv({tm, k:"sig", t:`${m[1]} · ${sideFr(m[2])}`, d:`Ligne ${m[3]} · ${m[4]} lot · risque ${money(num(m[5]))}`, st:"Signal"}); return; }
+  if((m = msg.match(/^(.+?) : SIGNAL (ACHAT|VENTE) sur ligne (\w+).*?lots=([\d.]+) risque=([\d.]+)/))){
+    passHad++; pend = pushEv({tm, k:"sig", t:`${m[1]} · ${sideFr(m[2])}`, d:`Ligne ${m[3]} · ${m[4]} lot · risque ${money(parseFloat(m[5]))}`, st:"Signal"}); return; }
   if(/^ORDRE OK/.test(msg)){ if(pend){ pend.k = "ok"; pend.st = "Pris"; pend = null; } else pushEv({tm, k:"ok", t:"Position ouverte", st:"Pris"}); return; }
   if(/ORDRE (REFUSÉ|INVALIDE)/.test(msg)){ if(pend){ pend.k = "ref"; pend.st = "Pas pris"; pend.d += " · refusé par MT5"; pend = null; } return; }
-  if((m = msg.match(/^(.+?) : signal (long|short)(?: \(ligne (\w+)\))? REFUSÉ : (.*)$/))){
+  if((m = msg.match(/^(.+?) : signal (achat|vente)(?: \(ligne (\w+)\))? REFUSÉ : (.*)$/))){
     passHad++; return pushEv({tm, k:"ref", t:`${m[1]} · ${sideFr(m[2])}`, d:(m[3] ? `Ligne ${m[3]} · ` : "") + reasonFr(m[4]), st:"Pas pris"}); }
-  if((m = msg.match(/^(.+?) : signal (long|short) ignoré \(stop trop proche/))){ passHad++; return pushEv({tm, k:"ref", t:`${m[1]} · ${sideFr(m[2])}`, d:"Stop trop proche du prix", st:"Pas pris"}); }
+  if((m = msg.match(/^(.+?) : signal (achat|vente) ignoré \(stop trop proche/))){ passHad++; return pushEv({tm, k:"ref", t:`${m[1]} · ${sideFr(m[2])}`, d:"Stop trop proche du prix", st:"Pas pris"}); }
   if(/Limite de perte du jour/.test(msg)) return pushEv({tm, k:"ref", t:"Limite de perte du jour atteinte", d:"Plus de nouveau trade aujourd'hui", st:"Pause"});
   if(/aucune NOUVELLE entrée/.test(msg)){ ageMsg = true; return pushEv({tm, k:"idle", t:"Pas d'entrée avant la prochaine heure", d:"La dernière bougie est trop ancienne"}); }
   if(/prochain passage dans/.test(msg)){ if(!passHad && !ageMsg) pushEv({tm, k:"idle", t:"Passage terminé : aucun signal"}); return; }
@@ -534,20 +488,28 @@ function ingest(msg, tm){
 }
 function renderRecent(){
   const box = $("recent"); box.textContent = "";
-  if(!EV.length){ box.innerHTML = '<div class="empty" style="padding:30px 10px">Rien pour l\'instant.</div>'; return; }
-  EV.slice(-30).reverse().forEach(e => { const d = document.createElement("div"); d.className = "ev " + e.k;
+  if(!EV.length){ box.innerHTML = '<div class="empty" style="padding:50px 10px"><b>Rien pour l\'instant</b></div>'; return; }
+  EV.slice(-60).reverse().forEach(e => { const d = document.createElement("div"); d.className = "ev " + e.k;
     d.innerHTML = `<span class="tm"></span><span class="pt"></span><div class="tx"><b></b><small></small></div><span class="st"></span>`;
     d.children[0].textContent = (e.tm || "").slice(0, 5); d.querySelector("b").textContent = e.t; const s = d.querySelector("small"); s.textContent = e.d || ""; if(!e.d) s.remove();
     const st = d.querySelector(".st"); if(e.st) st.textContent = e.st; else st.remove(); box.appendChild(d); });
 }
+function renderJournal(){
+  const full = jmode === "full";
+  $("log").classList.toggle("hidden", !full); $("tools").classList.toggle("hidden", !full); $("recent").classList.toggle("hidden", full);
+  document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", b.dataset.m === jmode));
+  full ? renderLog() : renderRecent();
+}
+$("seg").addEventListener("click", e => { const b = e.target.closest("button"); if(b){ jmode = b.dataset.m; renderJournal(); } });
 $("chips").addEventListener("click", e => { const b = e.target.closest(".fchip"); if(!b) return; filter = b.dataset.f; document.querySelectorAll(".fchip").forEach(c => c.classList.toggle("on", c === b)); renderLog(); });
 $("q").addEventListener("input", e => { query = e.target.value; renderLog(); });
 async function pollLog(){
   try{ const j = await api("/api/log?after=" + lastId); let add = false;
-    j.lines.forEach(([id, raw]) => { lastId = id; const m = raw.match(/^\d{4}-\d\d-\d\d (\d\d:\d\d:\d\d),\d+ (\w+) (.*)$/s); const l = {tm:m ? m[1] : "", msg:m ? m[3] : raw, k:classify(raw)};
+    j.lines.forEach(([id, raw]) => { lastId = id; const m = raw.match(/^\d{4}-\d\d-\d\d (\d\d:\d\d:\d\d),\d+ (\w+) (.*)$/s);
+      const l = {tm:m ? m[1] : "", msg:fr(m ? m[3] : raw), k:classify(raw)};
       if(l.k === "sig" && /SIGNAL/.test(raw)) counts.sig++; if(l.k === "ref" && /REFUSÉ/.test(raw)) counts.ref++; LOGS.push(l); ingest(l.msg, l.tm); add = true; });
     if(LOGS.length > 2500) LOGS = LOGS.slice(-2000);
-    if(add){ $("kSig").textContent = counts.sig; $("kSigN").textContent = counts.sig || counts.ref ? `${counts.ref} refusé(s) par les filtres` : "aucun pour l'instant"; renderRecent(); if(view === "log") renderLog(); } }
+    if(add){ $("kSig").textContent = counts.sig; $("kSigN").textContent = counts.sig || counts.ref ? `${counts.ref} refusé(s) par les filtres` : "aucun pour l'instant"; if(view === "dash") renderJournal(); } }
   catch(e){} setTimeout(pollLog, 1500);
 }
 
@@ -556,14 +518,15 @@ async function refresh(){ try{ render(await api("/api/status")); }catch(e){} }
 async function pollStatus(){ await refresh(); setTimeout(pollStatus, 3000); }
 async function act(fn, ok){ try{ const j = await fn(); if(j.ok === false) toast(j.error || "Impossible", true); else if(ok) toast(ok); refresh(); }catch(e){ toast(e.message, true); } }
 $("bTrade").onclick = () => $("vTrade").classList.add("show");
-$("tYes").onclick = () => { $("vTrade").classList.remove("show"); act(() => api("/api/start", {trade:true, confirm:true}), "Bot démarré sur la démo"); };
+$("tYes").onclick = () => { $("vTrade").classList.remove("show"); act(() => api("/api/start", {trade:true, confirm:true}), "Bot démarré"); };
 $("bStop").onclick = () => act(() => api("/api/stop", {}), "Arrêt demandé");
 $("oYes").onclick = async () => { $("vOut").classList.remove("show"); try{ await api("/api/disconnect", {}); toast("Déconnecté"); loginSig = ""; await refresh(); }catch(e){ toast(e.message, true); } };
 $("acctBtn").onclick = e => { e.stopPropagation(); $("menu").classList.toggle("hidden"); };
-$("bSave").onclick = async () => { const body = {}; document.querySelectorAll("#v-set input").forEach(i => body[i.dataset.k] = i.value);
-  try{ await api("/api/settings", body); $("formA").dataset.v = ""; document.activeElement?.blur?.(); toast("Réglages enregistrés"); refresh(); }catch(e){ toast(e.message, true); } };
+$("bSave").onclick = async () => { const body = {};
+  document.querySelectorAll("#setRows input").forEach(i => { const r = SET.find(x => x.k === i.dataset.k); const v = parseFloat(i.value.replace(",", ".")); body[r.k] = isNaN(v) ? i.value : +(v / r.f).toFixed(4); });
+  try{ await api("/api/settings", body); $("setRows").dataset.v = ""; document.activeElement?.blur?.(); toast("Réglages enregistrés"); refresh(); }catch(e){ toast(e.message, true); } };
 
-go(location.hash.slice(1) || "dash"); renderRecent(); pollStatus(); pollLog();
+go(location.hash.slice(1) || "dash"); pollStatus(); pollLog();
 </script>
 </body>
 </html>

@@ -24,10 +24,12 @@ Double-clic sur **`lancer_interface.bat`** (ou `python dashboard.py`) : une page
 - **Connexion** : numéro de compte, mot de passe, serveur ; ou « utiliser le compte déjà ouvert dans MT5 ».
   Le **mot de passe n'est jamais enregistré ni journalisé** ; seuls le numéro et le serveur sont mémorisés (`accounts.json`).
 - **Changer de compte / se déconnecter** : menu du compte en haut à droite, ou page Comptes. Impossible tant que le bot tourne.
-- **Tableau de bord** : état du bot, capital du compte, gains, positions, graphique interactif, activité récente.
+- **Tableau de bord** : état du bot, capital du compte, gains, positions ouvertes, et le **journal complet** (filtres signaux / refus / erreurs,
+  recherche ; bouton « Résumé » pour une ligne par événement). Les sens sont écrits **achat** / **vente**.
   **Démarrer le bot** (confirmation demandée ; un compte réel est refusé) et **Arrêter**.
-- Pages **Positions**, **Journal** (filtres signaux / refus / erreurs, recherche), **Bilan** (30 jours, par marché), **Réglages**
-  (risque, positions max, arrêt du jour, spread max : `settings.json`, pris en compte au prochain démarrage du bot).
+- Pages **Bilan** (30 jours, par marché) et **Réglages** : 5 réglages expliqués en une phrase, avec l'exemple en dollars sur ton capital
+  (trades en même temps, risque par trade, risque maximum accepté, pause après une mauvaise journée, frais d'entrée maximum ;
+  enregistrés dans `settings.json`, pris en compte au prochain démarrage du bot).
 - Thème sombre ou clair (bouton en haut). Le bot tourne dans un processus à part ; quitter le tableau de bord (Ctrl+C) l'arrête,
   mais les stop-loss restent chez le broker. Un seul bot qui trade à la fois (détecté automatiquement).
 - Sécurité : écoute seulement sur 127.0.0.1, jeton secret à chaque lancement, en-tête Host vérifié, trading demandé avec confirmation.

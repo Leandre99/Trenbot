@@ -281,13 +281,14 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
         return False
 
     side, lv, name, touches = sig[:4]
+    sf = "achat" if side == "long" else "vente"      # sens affiché en français dans le journal
     info = mt5.symbol_info(symbol)
     tick = mt5.symbol_info_tick(symbol)
     sgn = 1 if side == "long" else -1
     entry = tick.ask if side == "long" else tick.bid
     sl = sig[4] if len(sig) > 4 else lv - sgn * mp.sl_atr * a   # mode "reclaim" : stop sous le creux du test
     if (entry - sl) * sgn <= info.trade_stops_level * info.point:
-        log.info("%s : signal %s ignoré (stop trop proche du prix)", label, side)
+        log.info("%s : signal %s ignoré (stop trop proche du prix)", label, sf)
         return False
 
     # le spread est un coût payé d'entrée : s'il représente une grosse part de la distance au stop, le trade est perdant d'avance
@@ -295,14 +296,14 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
     cost_r = spread_cost_r(spread, entry, sl)
     if cost_r > config.MAX_SPREAD_R:
         log.info("%s : signal %s REFUSÉ : spread %.5f = %.2f R de la distance au stop (max %.2f R)",
-                 label, side, spread, cost_r, config.MAX_SPREAD_R)
+                 label, sf, spread, cost_r, config.MAX_SPREAD_R)
         return False
 
     tv = info.trade_tick_value_loss if info.trade_tick_value_loss > 0 else info.trade_tick_value
     lots = lot_for_risk(equity, config.RISK_PCT, config.MAX_RISK_PCT, entry, sl,
                         info.trade_tick_size, tv, info.volume_min, info.volume_max, info.volume_step)
     if lots.reason:
-        log.info("%s : signal %s (ligne %s) REFUSÉ : %s", label, side, name, lots.reason)
+        log.info("%s : signal %s (ligne %s) REFUSÉ : %s", label, sf, name, lots.reason)
         return False
 
     order_type = mt5.ORDER_TYPE_BUY if side == "long" else mt5.ORDER_TYPE_SELL
@@ -312,18 +313,18 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
         free = min(free, equity)   # on raisonne sur le capital simulé, pas sur les 10 000 $ de la démo
     if margin is None or margin > free * config.MAX_MARGIN_PCT / 100:
         log.info("%s : signal %s REFUSÉ : marge requise %s > %d %% de la marge libre (%.2f)",
-                 label, side, f"{margin:.2f}" if margin is not None else "?", config.MAX_MARGIN_PCT, free)
+                 label, sf, f"{margin:.2f}" if margin is not None else "?", config.MAX_MARGIN_PCT, free)
         return False
 
     log.info("%s : SIGNAL %s sur ligne %s (%d touches) entrée≈%.5f stop=%.5f lots=%s risque=%.2f (%.1f %%)",
-             label, side.upper(), name, touches, entry, sl, lots.lots, lots.risk_money, lots.risk_pct)
+             label, sf.upper(), name, touches, entry, sl, lots.lots, lots.risk_money, lots.risk_pct)
     req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": symbol, "volume": lots.lots,
            "type": mt5.ORDER_TYPE_BUY if side == "long" else mt5.ORDER_TYPE_SELL,
            "price": entry, "sl": round(sl, info.digits), "tp": 0.0,
            "deviation": config.DEVIATION, "magic": config.MAGIC,
            "comment": f"trendbot {name}", "type_time": mt5.ORDER_TIME_GTC,
            "type_filling": filling_type(symbol)}
-    ok = send(req, trade, f"{side.upper()} {symbol} {lots.lots} lots")
+    ok = send(req, trade, f"{sf.upper()} {symbol} {lots.lots} lots")
     if ok and trade:
         append_trade_log({"heure_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), "marche": symbol,
                           "sens": side, "lots": lots.lots, "entree": round(entry, info.digits),
