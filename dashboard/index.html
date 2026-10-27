@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>trendbot</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2334d399'/%3E%3Cpath d='M7 21l6-6 4 4 8-9' fill='none' stroke='%2304231a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#070a12; --bg2:#0b101b; --card:rgba(17,24,39,.72); --card-solid:#111827; --line:rgba(148,163,184,.13); --line2:rgba(148,163,184,.24);
+  --text:#eef2fb; --muted:#8e9ab4; --dim:#5f6b86; --accent:#34d399; --accent2:#22d3ee; --ink:#04231a;
+  --green:#34d399; --red:#fb7185; --amber:#fbbf24; --blue:#60a5fa; --glass:rgba(10,15,26,.62);
+  --shadow:0 0 0 1px rgba(255,255,255,.03) inset, 0 18px 44px rgba(0,0,0,.35); --r:18px;
+  --glow1:rgba(52,211,153,.13); --glow2:rgba(34,211,238,.09);
+}
+:root[data-theme="light"]{
+  --bg:#eef2f9; --bg2:#e4eaf5; --card:rgba(255,255,255,.82); --card-solid:#ffffff; --line:rgba(15,26,46,.09); --line2:rgba(15,26,46,.18);
+  --text:#0d1830; --muted:#58667f; --dim:#8a96ae; --accent:#059669; --accent2:#0891b2; --ink:#ffffff;
+  --green:#059669; --red:#e11d48; --amber:#b45309; --blue:#2563eb; --glass:rgba(255,255,255,.7);
+  --shadow:0 1px 2px rgba(15,26,46,.05), 0 14px 36px rgba(15,26,46,.08); --glow1:rgba(5,150,105,.12); --glow2:rgba(8,145,178,.09);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:radial-gradient(900px 520px at 12% -8%,var(--glow1),transparent 60%),radial-gradient(800px 480px at 100% 0%,var(--glow2),transparent 55%),var(--bg);
+  background-attachment:fixed;color:var(--text);font:14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+.hidden{display:none!important}
+.muted{color:var(--muted)} .dim{color:var(--dim)} .mono{font-family:"Cascadia Mono",Consolas,ui-monospace,monospace}
+.up{color:var(--green)} .down{color:var(--red)}
+button{font:inherit}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.pad{padding:20px 22px}
+.h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+.h h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}
+.ico{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---- boutons ---- */
+.btn{appearance:none;border:1px solid var(--line2);background:var(--card-solid);color:var(--text);padding:10px 16px;border-radius:12px;font-weight:650;
+  font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,border-color .15s,background .15s,box-shadow .15s}
+.btn:hover:not(:disabled){border-color:var(--muted);transform:translateY(-1px)}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:var(--ink);box-shadow:0 10px 26px rgba(52,211,153,.24)}
+.btn.primary:hover:not(:disabled){box-shadow:0 14px 32px rgba(52,211,153,.34)}
+.btn.danger{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,transparent)} .btn.danger:hover:not(:disabled){background:color-mix(in srgb,var(--red) 10%,transparent)}
+.btn.ghost{background:transparent} .btn.sm{padding:7px 12px;font-size:12.5px;border-radius:10px} .btn.block{width:100%;padding:13px 16px;font-size:14.5px}
+.btn:focus-visible,input:focus-visible,a:focus-visible,.chip:focus-visible,.nav button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ---- formulaires ---- */
+.field{margin-bottom:14px} .field label{display:block;font-size:12px;font-weight:650;color:var(--muted);margin-bottom:6px}
+.inp{width:100%;background:color-mix(in srgb,var(--bg2) 70%,transparent);border:1px solid var(--line2);border-radius:12px;color:var(--text);padding:12px 14px;font:600 14.5px/1.2 inherit}
+.inp::placeholder{color:var(--dim);font-weight:500} .inp:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.pw{position:relative} .pw .inp{padding-right:46px} .pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);padding:8px;border-radius:8px;cursor:pointer}
+.err{background:color-mix(in srgb,var(--red) 12%,transparent);border:1px solid color-mix(in srgb,var(--red) 35%,transparent);color:var(--red);padding:10px 13px;border-radius:12px;font-size:13px;margin-bottom:14px}
+.note{color:var(--dim);font-size:12px;line-height:1.5}
+
+/* ---- écran de connexion ---- */
+.login{min-height:100vh;display:grid;place-items:center;padding:28px 18px}
+.lwrap{width:100%;max-width:880px;display:grid;grid-template-columns:1.05fr 1fr;gap:0;overflow:hidden}
+.lhero{padding:40px 36px;background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 16%,transparent),color-mix(in srgb,var(--accent2) 8%,transparent) 60%,transparent);
+  border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:space-between;gap:30px}
+.logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:var(--ink);box-shadow:0 10px 28px rgba(52,211,153,.3)}
+.lhero h1{font-size:31px;line-height:1.15;margin:20px 0 10px;letter-spacing:-.6px}
+.lhero p{color:var(--muted);margin:0;max-width:34ch}
+.points{display:grid;gap:12px;margin:0;padding:0;list-style:none} .points li{display:flex;gap:11px;color:var(--muted);font-size:13px} .points .ico{color:var(--accent);margin-top:1px}
+.lform{padding:36px 34px} .lform > h2{margin:0 0 4px;font-size:20px;letter-spacing:-.3px} .lform .sub{color:var(--muted);margin:0 0 20px}
+.recent{display:grid;gap:8px;margin:0 0 18px}
+.rec{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line2);border-radius:13px;background:transparent;cursor:pointer;text-align:left;color:var(--text);width:100%}
+.rec:hover{border-color:var(--accent)} .rec .x{margin-left:auto;color:var(--dim);border:0;background:transparent;cursor:pointer;padding:4px 7px;border-radius:7px;font-size:16px;line-height:1} .rec .x:hover{color:var(--red)}
+.ava{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:13px;color:var(--ink);background:linear-gradient(135deg,var(--accent),var(--accent2));flex:none}
+.ava.real{background:linear-gradient(135deg,#fb7185,#f59e0b)}
+.badge{padding:2px 8px;border-radius:7px;font-size:10.5px;font-weight:800;letter-spacing:.7px;background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
+.badge.real{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.or{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:12px;margin:16px 0} .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ---- coque de l'app ---- */
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;padding:22px 14px;display:flex;flex-direction:column;gap:4px;background:var(--glass);border-right:1px solid var(--line);backdrop-filter:blur(18px)}
+.brand{display:flex;align-items:center;gap:12px;padding:2px 8px 20px} .brand .logo{width:38px;height:38px;border-radius:12px}
+.brand b{font-size:17px;letter-spacing:.2px} .brand small{display:block;color:var(--dim);font-size:11.5px;margin-top:-2px}
+.nav{display:grid;gap:3px}
+.nav button{display:flex;align-items:center;gap:13px;padding:11px 13px;border-radius:13px;border:0;background:transparent;color:var(--muted);font-weight:650;font-size:14px;cursor:pointer;text-align:left;position:relative}
+.nav button:hover{background:color-mix(in srgb,var(--text) 6%,transparent);color:var(--text)}
+.nav button.on{background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent)}
+.nav button.on::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.nav .cnt{margin-left:auto;font-size:11px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);border-radius:99px;padding:1px 8px}
+.side .foot{margin-top:auto;padding:12px 10px;border-top:1px solid var(--line);color:var(--dim);font-size:11.5px;line-height:1.5}
+.content{min-width:0}
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 30px;background:var(--glass);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
+.bar h1{margin:0;font-size:19px;letter-spacing:-.3px}
+.bar .r{display:flex;align-items:center;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;border:1px solid var(--line2);background:var(--card-solid);font-size:12.5px;font-weight:650;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim)} .dot.on{background:var(--green);box-shadow:0 0 0 0 var(--green);animation:pl 1.8s ease-out infinite}
+@keyframes pl{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 55%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
+@media (prefers-reduced-motion:reduce){.dot.on,.ring.on::after{animation:none}}
+.icobtn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line2);background:var(--card-solid);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.icobtn:hover{color:var(--text);border-color:var(--muted)}
+.acctbtn{display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;border-radius:14px;border:1px solid var(--line2);background:var(--card-solid);color:var(--text);cursor:pointer}
+.acctbtn .ava{width:30px;height:30px;border-radius:9px;font-size:12px} .acctbtn .t{text-align:left;line-height:1.2} .acctbtn .t b{font-size:13px;display:block} .acctbtn .t small{color:var(--muted);font-size:11px}
+.menu{position:absolute;right:30px;top:62px;width:290px;padding:8px;z-index:30}
+.menu .who{padding:12px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--line);margin-bottom:6px}
+.menu button{display:flex;align-items:center;gap:11px;width:100%;padding:10px 12px;border:0;border-radius:11px;background:transparent;color:var(--text);cursor:pointer;font-weight:600;text-align:left}
+.menu button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)} .menu button.red{color:var(--red)}
+main{padding:26px 30px 60px;max-width:1320px}
+.view{display:none;animation:in .25s ease} .view.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.grid{display:grid;gap:18px}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}.g2e{grid-template-columns:1fr 1fr}
+.mb{margin-bottom:18px}
+
+/* ---- hero / kpi ---- */
+.hero{display:flex;align-items:center;justify-content:space-between;gap:22px;flex-wrap:wrap;padding:24px 26px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-60px;top:-80px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,var(--glow1),transparent 65%);pointer-events:none}
+.state{display:flex;align-items:center;gap:18px}
+.ring{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--dim) 16%,transparent);color:var(--dim);position:relative;flex:none}
+.ring.on{background:color-mix(in srgb,var(--green) 15%,transparent);color:var(--green)}
+.ring.on::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--green);opacity:.4;animation:rg 2s ease-out infinite}
+@keyframes rg{from{transform:scale(.8);opacity:.6}to{transform:scale(1.25);opacity:0}}
+.state .t{font-size:22px;font-weight:750;letter-spacing:-.4px}.state .s{color:var(--muted);margin-top:2px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
+.kpi{padding:18px 20px;position:relative;overflow:hidden}
+.kpi .l{color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.kpi .v{font-size:29px;font-weight:760;letter-spacing:-.8px;margin:8px 0 2px;font-variant-numeric:tabular-nums}
+.kpi .n{color:var(--muted);font-size:12.5px} .kpi svg.sp{position:absolute;right:14px;bottom:14px;width:92px;height:36px;opacity:.9}
+.chartbox{position:relative} canvas{width:100%;height:270px;display:block}
+.tip{position:absolute;pointer-events:none;background:var(--card-solid);border:1px solid var(--line2);border-radius:11px;padding:8px 11px;font-size:12.5px;box-shadow:var(--shadow);transform:translate(-50%,-115%);white-space:nowrap;display:none;z-index:3}
+.cross{position:absolute;top:14px;bottom:30px;width:1px;background:var(--line2);pointer-events:none;display:none}
+.empty{padding:38px 18px;text-align:center;color:var(--muted)} .empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+.empty .ico{width:34px;height:34px;color:var(--dim);margin-bottom:10px}
+
+/* ---- tables / journal ---- */
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--dim);text-align:left;font-weight:700;padding:0 14px 10px}
+td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:right}
+.side-tag{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:7px;letter-spacing:.6px}.side-tag.b{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}.side-tag.s{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fchip{border:1px solid var(--line2);background:transparent;color:var(--muted);padding:6px 13px;border-radius:99px;font-weight:650;font-size:12.5px;cursor:pointer}
+.fchip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.log{height:520px;overflow:auto;padding:8px 6px;font-size:12.3px;line-height:1.7;border-radius:14px;background:color-mix(in srgb,var(--bg2) 75%,transparent);border:1px solid var(--line)}
+.log.mini{height:auto;max-height:300px}
+.row{display:flex;gap:12px;padding:1px 12px 1px 11px;border-left:2px solid transparent;white-space:pre-wrap;word-break:break-word}
+.row .tm{color:var(--dim);flex:none}.row.sig{border-color:var(--green)}.row.sig .m{color:var(--green)}.row.ref{border-color:var(--amber)}.row.ref .m{color:var(--amber)}
+.row.err{border-color:var(--red)}.row.err .m{color:var(--red)}.row.pass .m{color:var(--dim)}.row.sys .m{color:var(--blue)}
+.search{max-width:230px;padding:8px 12px;font-size:13px}
+
+/* ---- bilan / comptes / réglages ---- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.stat{background:color-mix(in srgb,var(--bg2) 60%,transparent);border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+.stat .l{font-size:11.5px;color:var(--muted);font-weight:600}.stat .v{font-size:21px;font-weight:750;font-variant-numeric:tabular-nums;margin-top:2px}
+.bar-row{display:grid;grid-template-columns:130px 1fr 80px;gap:12px;align-items:center;font-size:13px;padding:6px 0}
+.track{height:8px;border-radius:99px;background:color-mix(in srgb,var(--bg2) 80%,transparent);position:relative;overflow:hidden}.fill{position:absolute;top:0;bottom:0;border-radius:99px}
+.acc-hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}.acc-hero .ava{width:64px;height:64px;border-radius:19px;font-size:22px}
+.kv{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}.formgrid small{display:block;color:var(--dim);font-size:11.5px;margin-top:5px;line-height:1.35}
+
+/* ---- fenêtres / messages ---- */
+.veil{position:fixed;inset:0;background:rgba(3,6,12,.6);backdrop-filter:blur(4px);display:none;place-items:center;z-index:50;padding:20px}.veil.show{display:grid}
+.modal{max-width:450px;width:100%;padding:26px;background:var(--card-solid)}.modal h3{margin:0 0 8px;font-size:19px}.modal p{margin:0 0 6px;color:var(--muted)}
+.modal .btns{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,24px);background:var(--text);color:var(--bg);padding:12px 20px;border-radius:13px;font-weight:650;opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:90vw;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translate(-50%,0)}.toast.err{background:var(--red);color:#fff}
+
+@media (max-width:1100px){.app{grid-template-columns:76px minmax(0,1fr)}.nav button span,.brand div,.side .foot,.nav .cnt{display:none}.nav button{justify-content:center}.nav button.on::before{left:-14px}
+  .g4{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}.kv{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:760px){.lwrap{grid-template-columns:1fr}.lhero{display:none}.app{grid-template-columns:1fr}
+  .side{position:fixed;bottom:0;top:auto;height:auto;width:100%;flex-direction:row;padding:6px 8px;z-index:40;border-right:0;border-top:1px solid var(--line)}.brand,.side .foot{display:none}
+  .nav{grid-auto-flow:column;width:100%}.nav button{padding:10px 0}.nav button.on::before{display:none}main{padding:18px 16px 100px}.bar{padding:12px 16px}.menu{right:12px}
+  .g4,.g2e,.formgrid,.stats{grid-template-columns:1fr}.bar-row{grid-template-columns:90px 1fr 70px}}
+</style>
+</head>
+<body>
+
+<!-- ============ CONNEXION ============ -->
+<div class="login hidden" id="login">
+  <div class="card lwrap">
+    <div class="lhero">
+      <div>
+        <div class="logo"><svg class="ico" style="width:24px;height:24px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg></div>
+        <h1>trendbot</h1>
+        <p>Rebond sur lignes de tendance, analysé sur 24 marchés, à chaque heure.</p>
+      </div>
+      <ul class="points">
+        <li><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Chaque ordre part avec son stop-loss, posé chez le broker.</li>
+        <li><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Compte démo uniquement : un compte réel est refusé.</li>
+        <li><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Ton mot de passe n'est jamais enregistré.</li>
+      </ul>
+    </div>
+    <div class="lform" id="loginForm"></div>
+  </div>
+</div>
+
+<!-- ============ APPLICATION ============ -->
+<div class="app hidden" id="app">
+  <aside class="side">
+    <div class="brand"><div class="logo"><svg class="ico" style="width:20px;height:20px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg></div><div><b>trendbot</b><small>H1 · 24 marchés</small></div></div>
+    <nav class="nav" id="nav">
+      <button data-v="dash"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Tableau de bord</span></button>
+      <button data-v="pos"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg><span>Positions</span><em class="cnt" id="navPos">0</em></button>
+      <button data-v="log"><svg class="ico" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg><span>Journal</span></button>
+      <button data-v="bilan"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg><span>Bilan</span></button>
+      <button data-v="set"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Réglages</span></button>
+      <button data-v="acc"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Comptes</span></button>
+    </nav>
+    <div class="foot">Mode démo uniquement.<br>Les stop-loss restent chez le broker même si le bot s'arrête.</div>
+  </aside>
+
+  <div class="content">
+    <header class="bar">
+      <h1 id="title">Tableau de bord</h1>
+      <div class="r">
+        <span class="chip" id="botChip"><span class="dot" id="botDot"></span><span id="botTxt">Bot arrêté</span></span>
+        <button class="icobtn" id="theme" title="Changer de thème" aria-label="Changer de thème"><svg class="ico" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></button>
+        <button class="acctbtn" id="acctBtn" aria-haspopup="true"></button>
+      </div>
+    </header>
+    <div class="card menu hidden" id="menu"></div>
+
+    <main>
+      <!-- Tableau de bord -->
+      <section class="view" id="v-dash">
+        <div class="card hero mb">
+          <div class="state"><div class="ring" id="ring"><svg class="ico" style="width:24px;height:24px" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
+            <div><div class="t" id="stTitle">Bot arrêté</div><div class="s" id="stSub"></div></div></div>
+          <div class="actions">
+            <button class="btn" id="bDry">Essai à blanc</button>
+            <button class="btn primary" id="bTrade">Trader sur la démo</button>
+            <button class="btn danger" id="bStop" disabled>Arrêter</button>
+          </div>
+        </div>
+        <div class="grid g4 mb">
+          <div class="card kpi"><div class="l">Capital simulé</div><div class="v" id="kCap">–</div><div class="n" id="kCapN">&nbsp;</div></div>
+          <div class="card kpi"><div class="l">Gains · 30 jours</div><div class="v" id="kNet">–</div><div class="n" id="kNetN">&nbsp;</div><svg class="sp" id="kSpark" viewBox="0 0 92 36"></svg></div>
+          <div class="card kpi"><div class="l">Positions ouvertes</div><div class="v" id="kPos">–</div><div class="n">stops posés chez le broker</div></div>
+          <div class="card kpi"><div class="l">Signaux · session</div><div class="v" id="kSig">0</div><div class="n" id="kSigN">aucun pour l'instant</div></div>
+        </div>
+        <div class="grid g2">
+          <div class="card pad">
+            <div class="h"><h2>Gains cumulés du bot</h2><span class="muted" id="chartNote"></span></div>
+            <div class="chartbox" id="chartBox"><canvas id="chart" role="img" aria-label="Gains cumulés du bot sur 30 jours"></canvas><div class="cross" id="cross"></div><div class="tip" id="tip"></div></div>
+            <div class="empty hidden" id="chartEmpty"><svg class="ico" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/></svg><b>Aucun trade fermé pour l'instant</b>La courbe apparaît dès que le bot clôture des trades.</div>
+          </div>
+          <div class="card pad">
+            <div class="h"><h2>Activité récente</h2><button class="btn sm ghost" data-go="log">Tout voir</button></div>
+            <div class="log mono mini" id="recent"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Positions -->
+      <section class="view" id="v-pos"><div class="card pad"><div class="h"><h2>Positions ouvertes par le bot</h2><span class="muted" id="posNote"></span></div><div id="posBox"></div></div></section>
+
+      <!-- Journal -->
+      <section class="view" id="v-log"><div class="card pad">
+        <div class="h"><div class="chips" id="chips">
+          <button class="fchip on" data-f="all">Tout</button><button class="fchip" data-f="sig">Signaux</button><button class="fchip" data-f="ref">Refus</button><button class="fchip" data-f="err">Erreurs</button></div>
+          <input class="inp search" id="q" placeholder="Rechercher…" aria-label="Rechercher dans le journal"></div>
+        <div class="log mono" id="log" tabindex="0" aria-label="Journal du bot"></div></div></section>
+
+      <!-- Bilan -->
+      <section class="view" id="v-bilan"><div class="card pad"><div class="h"><h2>Bilan · 30 derniers jours</h2></div><div id="bilan"></div></div></section>
+
+      <!-- Réglages -->
+      <section class="view" id="v-set"><div class="grid g2e">
+        <div class="card pad"><div class="h"><h2>Capital et risque</h2></div><div class="formgrid" id="formA"></div></div>
+        <div class="card pad"><div class="h"><h2>Limites de sécurité</h2></div><div class="formgrid" id="formB"></div></div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center;margin-top:18px;flex-wrap:wrap"><button class="btn primary" id="bSave">Enregistrer</button><span class="note">Pris en compte au prochain démarrage du bot.</span></div></section>
+
+      <!-- Comptes -->
+      <section class="view" id="v-acc">
+        <div class="card pad mb" id="accCard"></div>
+        <div class="grid g2e">
+          <div class="card pad"><div class="h"><h2>Connecter un autre compte</h2></div><div id="accForm"></div></div>
+          <div class="card pad"><div class="h"><h2>Comptes récents</h2></div><div id="accRecent"></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="veil" id="vTrade" role="dialog" aria-modal="true"><div class="card modal"><h3>Trader sur la démo ?</h3>
+  <p>Le bot va ouvrir de <b>vrais ordres</b> sur le compte démo connecté. Il refuse automatiquement un compte réel.</p><p>Chaque ordre part avec son stop-loss, posé chez le broker.</p>
+  <div class="btns"><button class="btn" data-close>Annuler</button><button class="btn primary" id="tYes">Oui, démarrer</button></div></div></div>
+<div class="veil" id="vOut" role="dialog" aria-modal="true"><div class="card modal"><h3>Se déconnecter ?</h3>
+  <p>Le tableau de bord se détache de MetaTrader 5. MT5 reste ouvert et tes positions gardent leur stop-loss.</p>
+  <div class="btns"><button class="btn" data-close>Annuler</button><button class="btn danger" id="oYes">Se déconnecter</button></div></div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const TOKEN = "__TOKEN__";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let S = null, view = "dash", LOGS = [], lastId = 0, filter = "all", query = "", counts = {sig:0, ref:0};
+const TITLES = {dash:"Tableau de bord", pos:"Positions", log:"Journal", bilan:"Bilan", set:"Réglages", acc:"Comptes"};
+const ICO = {eye:'<svg class="ico" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  out:'<svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>',
+  swap:'<svg class="ico" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>'};
+
+/* ---------- utilitaires ---------- */
+async function api(path, body){
+  const o = {headers:{"X-Token":TOKEN}};
+  if(body !== undefined){ o.method = "POST"; o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(body); }
+  const r = await fetch(path, o); const j = await r.json().catch(() => ({error:"réponse invalide"}));
+  if(!r.ok) throw new Error(j.error || r.status); return j;
+}
+function toast(msg, err){ const t = $("toast"); t.textContent = msg; t.className = "toast show" + (err ? " err" : ""); clearTimeout(toast.t); toast.t = setTimeout(() => t.className = "toast", 3400); }
+const cur = () => (S && S.account) ? S.account.currency : "USD";
+const money = v => v == null ? "–" : new Intl.NumberFormat("fr-FR", {style:"currency", currency:cur(), currencyDisplay:"narrowSymbol"}).format(v);
+const signed = v => v == null ? "–" : (v > 0 ? "+" : "") + money(v);
+const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
+const initials = a => a ? ((a.name || "").trim().split(/\s+/).map(w => w[0]).join("").slice(0,2).toUpperCase() || String(a.login).slice(-2)) : "?";
+
+/* ---------- routeur ---------- */
+function go(v){ if(!TITLES[v]) v = "dash"; view = v; location.hash = v;
+  document.querySelectorAll(".view").forEach(e => e.classList.toggle("on", e.id === "v-" + v));
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  $("title").textContent = TITLES[v]; $("menu").classList.add("hidden");
+  if(v === "log"){ renderLog(); } if(S) draw(); }
+$("nav").onclick = e => { const b = e.target.closest("button"); if(b) go(b.dataset.v); };
+document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if(g) go(g.dataset.go);
+  if(!e.target.closest("#menu") && !e.target.closest("#acctBtn")) $("menu").classList.add("hidden");
+  if(e.target.closest("[data-close]") || e.target.classList.contains("veil")) document.querySelectorAll(".veil").forEach(v => v.classList.remove("show")); });
+document.addEventListener("keydown", e => { if(e.key === "Escape"){ document.querySelectorAll(".veil").forEach(v => v.classList.remove("show")); $("menu").classList.add("hidden"); } });
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(h && h !== view) go(h); });
+
+/* ---------- thème ---------- */
+function setTheme(t){ if(t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; try{ t ? localStorage.setItem("tb_theme", t) : localStorage.removeItem("tb_theme"); }catch(e){} if(S) draw(); }
+try{ const t = localStorage.getItem("tb_theme"); if(t) document.documentElement.dataset.theme = t; }catch(e){}   /* sombre par défaut, clair au choix */
+$("theme").onclick = () => setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+
+/* ---------- formulaire de connexion (écran + page Comptes) ---------- */
+function connectForm(id, profiles){
+  const servers = [...new Set(["Deriv-Demo","Deriv-Server","Deriv-Server-02", ...profiles.map(p => p.server)])];
+  return `<div class="err hidden" id="${id}Err"></div>
+    <div class="field"><label for="${id}L">Numéro de compte</label><input class="inp" id="${id}L" inputmode="numeric" autocomplete="username" placeholder="ex. 40915110"></div>
+    <div class="field"><label for="${id}P">Mot de passe</label><div class="pw"><input class="inp" id="${id}P" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" id="${id}Eye" aria-label="Afficher le mot de passe">${ICO.eye}</button></div></div>
+    <div class="field"><label for="${id}S">Serveur</label><input class="inp" id="${id}S" list="${id}SL" value="${esc(profiles[0]?.server || "Deriv-Demo")}" autocomplete="off"><datalist id="${id}SL">${servers.map(s => `<option value="${esc(s)}">`).join("")}</datalist></div>
+    <button class="btn primary block" id="${id}Go" type="button">Se connecter</button>
+    <p class="note" style="margin:12px 0 0">Le mot de passe sert uniquement à ouvrir la session dans MetaTrader 5. Il n'est <b>jamais</b> enregistré, ni journalisé.</p>`;
+}
+function bindForm(id){
+  const g = $(id + "Go"), err = $(id + "Err");
+  $(id + "Eye").onclick = () => { const p = $(id + "P"); p.type = p.type === "password" ? "text" : "password"; };
+  const submit = async () => {
+    err.classList.add("hidden"); g.disabled = true; const old = g.innerHTML; g.innerHTML = '<span class="spin"></span> Connexion…';
+    try{ const j = await api("/api/connect", {login:$(id + "L").value, password:$(id + "P").value, server:$(id + "S").value});
+      $(id + "P").value = ""; toast("Connecté au compte " + j.account.login + (j.account.demo ? " (démo)" : " (RÉEL)")); await refresh(); go("dash"); }
+    catch(e){ err.textContent = e.message; err.classList.remove("hidden"); }
+    finally{ g.disabled = false; g.innerHTML = old; }
+  };
+  g.onclick = submit; [id + "L", id + "P", id + "S"].forEach(i => $(i).addEventListener("keydown", e => { if(e.key === "Enter") submit(); }));
+}
+function recentList(profiles, current, mode){
+  if(!profiles.length) return `<p class="note">Aucun compte mémorisé pour l'instant. Seuls le numéro et le serveur sont retenus, jamais le mot de passe.</p>`;
+  return `<div class="recent">` + profiles.map(p => `<div class="rec" role="button" tabindex="0" data-pick="${esc(p.login)}" data-server="${esc(p.server)}">
+      <span class="ava ${p.demo === false ? "real" : ""}">${esc(String(p.login).slice(-2))}</span>
+      <div><b>${esc(p.login)}</b> ${p.demo === false ? '<span class="badge real">RÉEL</span>' : '<span class="badge">DÉMO</span>'}${current === p.login ? ' <span class="muted">· connecté</span>' : ""}<div class="note">${esc(p.server)}</div></div>
+      <button class="x" data-forget="${esc(p.login)}" aria-label="Oublier ce compte" title="Oublier">×</button></div>`).join("") + `</div>`;
+}
+function wireRecent(root, id){
+  root.querySelectorAll("[data-pick]").forEach(el => { const pick = () => { $(id + "L").value = el.dataset.pick; $(id + "S").value = el.dataset.server; $(id + "P").focus(); };
+    el.onclick = e => { if(e.target.closest("[data-forget]")) return; pick(); }; el.onkeydown = e => { if(e.key === "Enter") pick(); }; });
+  root.querySelectorAll("[data-forget]").forEach(b => b.onclick = async e => { e.stopPropagation(); await api("/api/accounts/forget", {login:b.dataset.forget}); await refresh(); });
+}
+let loginSig = "";
+function renderLogin(){
+  const sig = JSON.stringify([S.profiles, S.error, S.disconnected]); if(sig === loginSig) return; loginSig = sig;
+  const f = $("loginForm");
+  f.innerHTML = `<h2>Connexion</h2><p class="sub">Connecte un compte MetaTrader 5.</p>
+    ${S.error && !S.disconnected ? `<div class="err">${esc(S.error)}</div>` : ""}
+    ${S.profiles.length ? `<div class="h" style="margin-bottom:8px"><h2>Comptes récents</h2></div>${recentList(S.profiles, null)}` : ""}
+    ${connectForm("lg", S.profiles)}
+    <div class="or">ou</div>
+    <button class="btn block" id="lgCur" type="button">Utiliser le compte déjà ouvert dans MT5</button>`;
+  bindForm("lg"); wireRecent(f, "lg");
+  $("lgCur").onclick = async () => { try{ await api("/api/connect", {use_current:true}); await refresh(); go("dash"); } catch(e){ toast(e.message, true); } };
+}
+
+/* ---------- rendu principal ---------- */
+function render(s){
+  S = s; const a = s.account;
+  const showApp = !!(s.mt5 && a);
+  $("login").classList.toggle("hidden", showApp); $("app").classList.toggle("hidden", !showApp);
+  if(!showApp){ renderLogin(); return; }
+  loginSig = "";
+  const run = s.bot.running;
+  $("acctBtn").innerHTML = `<span class="ava ${a.demo ? "" : "real"}">${esc(initials(a))}</span><span class="t"><b>${esc(a.login)}</b><small>${a.demo ? "Démo" : "RÉEL"} · ${esc(money(a.balance))}</small></span>`;
+  $("menu").innerHTML = `<div class="who"><span class="ava ${a.demo ? "" : "real"}">${esc(initials(a))}</span><div><b>${esc(a.name || a.login)}</b><div class="note">${esc(a.login)} · ${esc(a.server)}</div></div></div>
+    <button id="mSwap">${ICO.swap} Changer de compte</button><button id="mOut" class="red">${ICO.out} Se déconnecter</button>`;
+  $("mSwap").onclick = () => go("acc"); $("mOut").onclick = () => { $("menu").classList.add("hidden"); $("vOut").classList.add("show"); };
+  $("botDot").className = "dot" + (run ? " on" : ""); $("botTxt").textContent = run ? "Bot en marche" : "Bot arrêté";
+  $("ring").className = "ring" + (run ? " on" : ""); $("stTitle").textContent = run ? "Bot en marche" : "Bot arrêté";
+  if(run){ const since = s.bot.started_at ? " · démarré à " + new Date(s.bot.started_at*1000).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) : "";
+    const nx = new Date(); nx.setMinutes(0,5,0); nx.setHours(nx.getHours() + 1); const mins = Math.max(0, Math.round((nx - new Date())/60000));
+    $("stSub").textContent = s.bot.mode.charAt(0).toUpperCase() + s.bot.mode.slice(1) + since + " · prochain passage dans ~" + mins + " min";
+  } else $("stSub").textContent = a.demo ? "Choisis un mode pour démarrer." : "Compte réel détecté : le bot refusera de trader.";
+  $("bDry").disabled = $("bTrade").disabled = run; $("bStop").disabled = !run;
+
+  const cap = s.settings.CAPITAL_CAP, sm = s.summary;
+  $("kCap").textContent = money(s.sim_capital); $("kCapN").textContent = cap ? `départ ${money(cap)} · bot ${signed(s.bot_pnl)}` : "capital réel du compte";
+  $("kNet").innerHTML = sm ? `<span class="${cls(sm.net)}">${signed(sm.net)}</span>` : "–";
+  $("kNetN").textContent = sm ? `${sm.trades} trade(s) · ${sm.trades ? Math.round(sm.wins/sm.trades*100) : 0} % gagnants` : "en attente";
+  $("kPos").textContent = `${s.positions.length} / ${s.settings.MAX_POSITIONS}`; $("navPos").textContent = s.positions.length;
+  sparkline($("kSpark"), (s.series || []).map(p => p[1]));
+  renderPositions(); renderBilan(); renderForm(); renderAccounts(); draw();
+}
+function sparkline(svg, vals){
+  if(vals.length < 2){ svg.innerHTML = ""; return; }
+  const mn = Math.min(0, ...vals), mx = Math.max(0, ...vals), W = 92, H = 36, p = 3;
+  const pts = vals.map((v, i) => [p + i/(vals.length-1)*(W - 2*p), H - p - (v - mn)/((mx - mn) || 1)*(H - 2*p)]);
+  const col = vals[vals.length-1] >= 0 ? "var(--green)" : "var(--red)";
+  svg.innerHTML = `<path d="M${pts.map(q => q.map(n => n.toFixed(1)).join(",")).join(" L")}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+function renderPositions(){
+  const p = S.positions; $("posNote").textContent = p.length ? `${p.length} ouverte(s)` : "";
+  $("posBox").innerHTML = !p.length ? `<div class="empty"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5"/></svg><b>Aucune position ouverte</b>Le bot en ouvre une dès qu'un signal passe tous ses filtres.</div>` :
+    `<table><thead><tr><th>Marché</th><th>Sens</th><th class="r">Lots</th><th class="r">Entrée</th><th class="r">Prix</th><th class="r">Stop</th><th class="r">Gain / perte</th></tr></thead><tbody>` +
+    p.map(x => `<tr><td><b>${esc(x.symbol)}</b></td><td><span class="side-tag ${x.side === "ACHAT" ? "b" : "s"}">${x.side}</span></td><td class="r">${x.lots}</td><td class="r mono">${x.open}</td><td class="r mono">${x.price}</td><td class="r mono">${x.sl}</td><td class="r ${cls(x.pnl)}"><b>${signed(x.pnl)}</b></td></tr>`).join("") + `</tbody></table>`;
+}
+function renderBilan(){
+  const sm = S.summary; if(!sm || !sm.trades){ $("bilan").innerHTML = `<div class="empty"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><b>Pas encore de trades fermés</b>Le bilan se remplit au fil du temps.</div>`; return; }
+  const mx = Math.max(...sm.by_market.map(m => Math.abs(m[2])), 0.01);
+  $("bilan").innerHTML = `<div class="stats"><div class="stat"><div class="l">Trades fermés</div><div class="v">${sm.trades}</div></div><div class="stat"><div class="l">Gagnants</div><div class="v">${Math.round(sm.wins/sm.trades*100)} %</div></div>
+    <div class="stat"><div class="l">Facteur de gain</div><div class="v">${sm.pf ?? "–"}</div></div><div class="stat"><div class="l">Net</div><div class="v ${cls(sm.net)}">${signed(sm.net)}</div></div>
+    <div class="stat"><div class="l">Gain moyen</div><div class="v up">${signed(sm.avg_win)}</div></div><div class="stat"><div class="l">Perte moyenne</div><div class="v down">${signed(sm.avg_loss)}</div></div></div>` +
+    sm.by_market.map(m => { const w = Math.abs(m[2])/mx*50, pos = m[2] >= 0;
+      return `<div class="bar-row"><span>${esc(m[0].replace(" Index",""))}<span class="dim"> · ${m[1]}</span></span><div class="track"><div class="fill" style="${pos ? `left:50%;width:${w}%;background:var(--green)` : `right:50%;width:${w}%;background:var(--red)`}"></div></div><span class="${cls(m[2])}" style="text-align:right"><b>${signed(m[2])}</b></span></div>`; }).join("");
+}
+const FA = [["CAPITAL_CAP","Capital simulé","vide = capital réel du compte"],["RISK_PCT","Risque par trade (%)","perte visée si le stop est touché"],["MAX_RISK_PCT","Risque max au lot minimum (%)","au-delà, le trade est refusé"]];
+const FB = [["MAX_POSITIONS","Positions maximum","ouvertes en même temps"],["DAILY_LOSS_STOP_PCT","Arrêt du jour (%)","plus de trade si le capital baisse de ce %"],["MAX_SPREAD_R","Spread maximum (R)","refus si le coût dépasse ce multiple du stop"]];
+function renderForm(){
+  const st = S.settings, key = JSON.stringify(st); if($("formA").dataset.v === key || document.activeElement?.closest?.("#v-set")) return; $("formA").dataset.v = key;
+  const mk = L => L.map(([k, l, h]) => `<div class="field"><label for="f_${k}">${l}</label><input class="inp" id="f_${k}" data-k="${k}" inputmode="decimal" value="${st[k] == null ? "" : st[k]}"><small>${h}</small></div>`).join("");
+  $("formA").innerHTML = mk(FA); $("formB").innerHTML = mk(FB);
+}
+function renderAccounts(){
+  const a = S.account; if(!a) return; const key = JSON.stringify([a, S.profiles, S.bot.running]); if($("accCard").dataset.v === key || document.activeElement?.closest?.("#v-acc")) return; $("accCard").dataset.v = key;
+  $("accCard").innerHTML = `<div class="acc-hero"><span class="ava ${a.demo ? "" : "real"}">${esc(initials(a))}</span><div><div style="font-size:21px;font-weight:750;letter-spacing:-.4px">${esc(a.name || "Compte " + a.login)} ${a.demo ? '<span class="badge">DÉMO</span>' : '<span class="badge real">RÉEL</span>'}</div>
+      <div class="muted mono">${esc(a.login)} · ${esc(a.server)}</div></div>
+    <div style="margin-left:auto"><button class="btn danger" id="accOut" ${S.bot.running ? "disabled title='Arrête le bot avant de te déconnecter'" : ""}>${ICO.out} Se déconnecter</button></div></div>
+    <div class="kv"><div class="stat"><div class="l">Solde</div><div class="v">${money(a.balance)}</div></div><div class="stat"><div class="l">Équité</div><div class="v">${money(a.equity)}</div></div>
+      <div class="stat"><div class="l">Marge libre</div><div class="v ${a.margin_free < 0 ? "down" : ""}">${money(a.margin_free)}</div></div><div class="stat"><div class="l">Levier</div><div class="v">1:${a.leverage}</div></div></div>
+    ${S.bot.running ? '<p class="note" style="margin:14px 0 0">Arrête le bot pour changer de compte : il ne doit jamais changer de compte en plein trade.</p>' : ""}`;
+  $("accOut").onclick = () => $("vOut").classList.add("show");
+  $("accForm").innerHTML = connectForm("ac", S.profiles); bindForm("ac");
+  if(S.bot.running) $("acGo").disabled = true;
+  $("accRecent").innerHTML = recentList(S.profiles, a.login); wireRecent($("accRecent"), "ac");
+}
+
+/* ---------- graphique interactif ---------- */
+let chartPts = [];
+function draw(){
+  if(!S || view !== "dash") return;
+  const series = S.series || [], c = $("chart"), empty = !series.length;
+  c.classList.toggle("hidden", empty); $("chartEmpty").classList.toggle("hidden", !empty); $("chartNote").textContent = empty ? "" : `${series.length} trades fermés`;
+  if(empty) return;
+  const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight; c.width = W*dpr; c.height = H*dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr); const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
+  const pts = [[series[0][0] - 3600, 0], ...series], P = {l:56, r:18, t:14, b:28};
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]); const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys), pad = ((y1 - y0) || 1)*.14;
+  const X = t => P.l + (t - x0)/((x1 - x0) || 1)*(W - P.l - P.r), Y = val => H - P.b - (val - (y0 - pad))/(((y1 + pad) - (y0 - pad)) || 1)*(H - P.t - P.b);
+  chartPts = pts.map(p => ({x:X(p[0]), y:Y(p[1]), t:p[0], v:p[1]}));
+  g.font = "11px system-ui"; g.textBaseline = "middle";
+  for(let i = 0; i <= 4; i++){ const val = (y0 - pad) + ((y1 + pad) - (y0 - pad))*i/4, y = Y(val); g.strokeStyle = v("--line"); g.beginPath(); g.moveTo(P.l, y); g.lineTo(W - P.r, y); g.stroke();
+    g.fillStyle = v("--dim"); g.textAlign = "right"; g.fillText(val.toFixed((y1 - y0) < 10 ? 1 : 0), P.l - 10, y); }
+  g.strokeStyle = v("--line2"); g.setLineDash([4, 4]); g.beginPath(); g.moveTo(P.l, Y(0)); g.lineTo(W - P.r, Y(0)); g.stroke(); g.setLineDash([]);
+  const last = ys[ys.length - 1], col = last >= 0 ? v("--green") : v("--red");
+  const grad = g.createLinearGradient(0, P.t, 0, H - P.b); grad.addColorStop(0, col + "55"); grad.addColorStop(1, col + "00");
+  g.beginPath(); chartPts.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.lineTo(X(x1), Y(0)); g.lineTo(X(x0), Y(0)); g.closePath(); g.fillStyle = grad; g.fill();
+  g.beginPath(); chartPts.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.strokeStyle = col; g.lineWidth = 2.4; g.lineJoin = "round"; g.stroke();
+  const L = chartPts[chartPts.length - 1]; g.fillStyle = col; g.beginPath(); g.arc(L.x, L.y, 4.5, 0, 7); g.fill();
+  g.fillStyle = v("--dim"); [x0, x1].forEach((t, i) => { g.textAlign = i ? "right" : "left"; g.fillText(new Date(t*1000).toLocaleDateString("fr-FR", {day:"2-digit", month:"short"}), i ? W - P.r : P.l, H - 10); });
+}
+$("chartBox").addEventListener("mousemove", e => {
+  if(!chartPts.length) return; const r = $("chart").getBoundingClientRect(), mx = e.clientX - r.left;
+  const p = chartPts.reduce((b, q) => Math.abs(q.x - mx) < Math.abs(b.x - mx) ? q : b);
+  const cr = $("cross"), tp = $("tip"); cr.style.display = tp.style.display = "block"; cr.style.left = p.x + "px"; tp.style.left = p.x + "px"; tp.style.top = (p.y + 14) + "px";
+  tp.innerHTML = `<b class="${cls(p.v)}">${signed(p.v)}</b><div class="muted">${new Date(p.t*1000).toLocaleString("fr-FR", {day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"})}</div>`; });
+$("chartBox").addEventListener("mouseleave", () => { $("cross").style.display = $("tip").style.display = "none"; });
+window.addEventListener("resize", draw);
+
+/* ---------- journal ---------- */
+function classify(t){
+  if(/ERROR|INVALIDE|Traceback|ÉCHEC|Exception/.test(t)) return "err";
+  if(/SIGNAL|ORDRE OK|ESSAI À BLANC\]/.test(t)) return "sig";
+  if(/REFUSÉ|WARNING|aucune NOUVELLE entrée/.test(t)) return "ref";
+  if(/^===|^---|arrêt|démarrage/.test(t)) return "sys"; return "pass";
+}
+function rowEl(l){ const d = document.createElement("div"); d.className = "row " + l.k; d.innerHTML = `<span class="tm">${esc(l.tm)}</span><span class="m"></span>`; d.lastChild.textContent = l.msg; return d; }
+function renderLog(){
+  const box = $("log"); box.textContent = ""; const q = query.toLowerCase();
+  LOGS.filter(l => (filter === "all" || l.k === filter) && (!q || l.msg.toLowerCase().includes(q))).slice(-500).forEach(l => box.appendChild(rowEl(l))); box.scrollTop = box.scrollHeight;
+}
+function renderRecent(){ const box = $("recent"); box.textContent = ""; const items = LOGS.filter(l => l.k !== "pass").slice(-9); if(!items.length){ box.innerHTML = '<div class="empty" style="padding:24px 10px">Rien pour l\'instant.</div>'; return; } items.forEach(l => box.appendChild(rowEl(l))); box.scrollTop = box.scrollHeight; }
+$("chips").addEventListener("click", e => { const b = e.target.closest(".fchip"); if(!b) return; filter = b.dataset.f; document.querySelectorAll(".fchip").forEach(c => c.classList.toggle("on", c === b)); renderLog(); });
+$("q").addEventListener("input", e => { query = e.target.value; renderLog(); });
+async function pollLog(){
+  try{ const j = await api("/api/log?after=" + lastId); let add = false;
+    j.lines.forEach(([id, raw]) => { lastId = id; const m = raw.match(/^\d{4}-\d\d-\d\d (\d\d:\d\d:\d\d),\d+ (\w+) (.*)$/s); const l = {tm:m ? m[1] : "", msg:m ? m[3] : raw, k:classify(raw)};
+      if(l.k === "sig" && /SIGNAL/.test(raw)) counts.sig++; if(l.k === "ref" && /REFUSÉ/.test(raw)) counts.ref++; LOGS.push(l); add = true; });
+    if(LOGS.length > 2500) LOGS = LOGS.slice(-2000);
+    if(add){ $("kSig").textContent = counts.sig; $("kSigN").textContent = counts.sig || counts.ref ? `${counts.ref} refusé(s) par les filtres` : "aucun pour l'instant"; renderRecent(); if(view === "log") renderLog(); } }
+  catch(e){} setTimeout(pollLog, 1500);
+}
+
+/* ---------- actions ---------- */
+async function refresh(){ try{ render(await api("/api/status")); }catch(e){} }
+async function pollStatus(){ await refresh(); setTimeout(pollStatus, 3000); }
+async function act(fn, ok){ try{ const j = await fn(); if(j.ok === false) toast(j.error || "Impossible", true); else if(ok) toast(ok); refresh(); }catch(e){ toast(e.message, true); } }
+$("bDry").onclick = () => act(() => api("/api/start", {trade:false}), "Essai à blanc démarré");
+$("bTrade").onclick = () => $("vTrade").classList.add("show");
+$("tYes").onclick = () => { $("vTrade").classList.remove("show"); act(() => api("/api/start", {trade:true, confirm:true}), "Bot démarré sur la démo"); };
+$("bStop").onclick = () => act(() => api("/api/stop", {}), "Arrêt demandé");
+$("oYes").onclick = async () => { $("vOut").classList.remove("show"); try{ await api("/api/disconnect", {}); toast("Déconnecté"); loginSig = ""; await refresh(); }catch(e){ toast(e.message, true); } };
+$("acctBtn").onclick = e => { e.stopPropagation(); $("menu").classList.toggle("hidden"); };
+$("bSave").onclick = async () => { const body = {}; document.querySelectorAll("#v-set input").forEach(i => body[i.dataset.k] = i.value);
+  try{ await api("/api/settings", body); $("formA").dataset.v = ""; document.activeElement?.blur?.(); toast("Réglages enregistrés"); refresh(); }catch(e){ toast(e.message, true); } };
+
+go(location.hash.slice(1) || "dash"); renderRecent(); pollStatus(); pollLog();
+</script>
+</body>
+</html>

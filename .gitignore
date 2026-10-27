@@ -5,5 +5,8 @@ bot.log
 state.json
 trades_log.csv
 settings.json
+accounts.json
+state_*.json
+bot_trade.lock
 .env
 *.png

@@ -16,18 +16,21 @@ pip install -r requirements.txt
 1. Ouvre **MetaTrader 5**, connecte-toi à ton compte **démo** (le bot ne gère jamais ton mot de passe).
 2. *Outils > Options > Expert Advisors* : coche « Autoriser le trading algorithmique ».
 
-## Interface (le plus simple)
+## Tableau de bord (le plus simple)
 
-Double-clic sur **`lancer_interface.bat`** (ou `python app.py`), MT5 ouvert et connecté à ta démo.
+Double-clic sur **`lancer_interface.bat`** (ou `python dashboard.py`) : une page s'ouvre dans ton navigateur
+(`http://127.0.0.1:8765`, uniquement sur ton PC). **Garde la fenêtre noire ouverte** tant que tu l'utilises.
 
-- **▶ Démarrer (essai à blanc)** : le bot analyse et valide chaque ordre auprès de MT5 sans rien envoyer.
-- **▶ Démarrer (trade sur la démo)** : demande confirmation, puis trade sur la démo (refus automatique d'un compte réel).
-- **■ Arrêter** : arrête le bot ; les positions ouvertes gardent leur stop-loss chez le broker.
-- Onglets : **Journal** en direct (signaux en vert, refus en orange, erreurs en rouge), **Positions du bot**, **Réglages**
-  (capital simulé, risque, positions max, arrêt du jour, spread max : enregistrés dans `settings.json`, pris en compte au prochain démarrage).
-- **Bilan** : gains/pertes des 30 derniers jours. **Mettre à jour les lignes MT5** : rafraîchit les lignes de l'indicateur.
-
-Fermer la fenêtre arrête le bot (après confirmation). PC et MT5 doivent rester allumés.
+- **Connexion** : numéro de compte, mot de passe, serveur ; ou « utiliser le compte déjà ouvert dans MT5 ».
+  Le **mot de passe n'est jamais enregistré ni journalisé** ; seuls le numéro et le serveur sont mémorisés (`accounts.json`).
+- **Changer de compte / se déconnecter** : menu du compte en haut à droite, ou page Comptes. Impossible tant que le bot tourne.
+- **Tableau de bord** : état du bot, capital simulé, gains, positions, graphique interactif, activité récente.
+  **Essai à blanc** (rien n'est envoyé), **Trader sur la démo** (confirmation demandée ; un compte réel est refusé), **Arrêter**.
+- Pages **Positions**, **Journal** (filtres signaux / refus / erreurs, recherche), **Bilan** (30 jours, par marché), **Réglages**
+  (capital simulé, risque, positions max, arrêt du jour, spread max : `settings.json`, pris en compte au prochain démarrage du bot).
+- Thème sombre ou clair (bouton en haut). Le bot tourne dans un processus à part ; quitter le tableau de bord (Ctrl+C) l'arrête,
+  mais les stop-loss restent chez le broker. Un seul bot qui trade à la fois (détecté automatiquement).
+- Sécurité : écoute seulement sur 127.0.0.1, jeton secret à chaque lancement, en-tête Host vérifié, trading demandé avec confirmation.
 
 ## Utilisation en ligne de commande
 
@@ -51,7 +54,7 @@ Chaque ordre ouvert est aussi noté dans `trades_log.csv`.
 - Lots = `risque visé en $ / perte par lot au stop`, arrondi vers le bas au pas du broker. Dépend donc du marché.
 - Risque visé : **1 %** du capital par trade. Si même le lot minimum dépasse **3 %**, le trade est refusé.
 - `CAPITAL_CAP = 100` : le bot raisonne comme si le compte valait 100 $ **+ ses propres gains/pertes** (mets `None` pour utiliser le capital réel).
-- **2 positions max**, une seule par marché (`MAX_POSITIONS`). **Arrêt du jour** si le capital baisse de 3 %.
+- **3 positions max**, une seule par marché (`MAX_POSITIONS`, réglable dans l'interface). **Arrêt du jour** si le capital baisse de 3 %.
 - **Filtre de spread** : refus si le spread dépasse 0,15 R (15 % de la distance au stop).
 - **Garde-fou de marge** : un trade ne peut pas immobiliser plus de 50 % de la marge libre.
 - Pas d'entrée si la bougie a plus de 15 min (redémarrage tardif).
@@ -73,8 +76,7 @@ Vert = haussière, rouge = baissière ; semaine épais, jour moyen, 4h fin.
 python test_risk.py                # lots
 python test_bot.py                 # lignes, signaux, stop suiveur, spread, perte du jour, export (données fabriquées)
 python test_demo_lifecycle.py      # RÉEL sur démo uniquement : ouvre 1 lot min avec stop, déplace le stop, ferme
-python test_settings.py            # réglages de l'interface -> lus par le bot
-python app.py --smoke              # interface : démarre le bot, reçoit le journal, l'arrête, ouvre le bilan
+python test_dashboard.py           # tableau de bord : sécurité (jeton, Host), connexion, réglages, démarrage/arrêt du bot
 ```
 
 ## Outils d'analyse
@@ -96,7 +98,8 @@ python app.py --smoke              # interface : démarre le bot, reçoit le jou
 - Sur l'année passée : +19 % mais **pire baisse −72 %** (3 positions, 100 $). Sur 3 mois : médiane ≈ 0 %, pire 10 % ≈ −45 %,
   meilleur 10 % ≈ +74 %, seulement ~49 % des périodes gagnantes. À 100 $, le bot ne prend qu'environ 1 signal sur 5
   (positions déjà prises, lot minimum trop gros, arrêt du jour, spread).
-- **2 positions max** donne une baisse moyenne plus faible que 3 dans les 6 combinaisons testées (`python sweep_risk.py`) ; 5 est nettement pire.
+- Nombre de positions : la simulation (`python sweep_risk.py`) donnait une baisse moyenne un peu plus faible avec **2** qu'avec 3 dans les 6 combinaisons testées ;
+  5 est nettement pire. Réglage actuel : **3** (choix de l'utilisateur) ; à 100 $ avec 2 positions : +10 % sur l'année, pire baisse −57 % ; avec 3 : +19 %, −72 %.
 - Les autres écarts entre réglages (risque 0,5/1/2 %, capital 100/250/500/1000 $) sont du bruit : ne pas optimiser dessus.
 - C'est un **test**, pas une source de revenu : lancer en démo 2 à 3 mois sans toucher aux réglages, puis comparer avec `python report.py`.
 

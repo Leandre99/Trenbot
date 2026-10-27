@@ -7,9 +7,12 @@ Utilisation (MT5 doit être ouvert et connecté à ton compte) :
 Le bot ne gère jamais ton mot de passe : il se branche sur le MT5 déjà connecté.
 """
 import argparse
+import atexit
 import csv
+import ctypes
 import json
 import logging
+import os
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -24,8 +27,57 @@ from risk import daily_halt, lot_for_risk, spread_cost_r
 from strategy import atr, find_pivots
 
 HERE = Path(__file__).parent
-STATE_FILE = HERE / "state.json"
+LEGACY_STATE = HERE / "state.json"
+STATE_FILE = LEGACY_STATE        # remplacé par state_<compte>.json dès que le compte est connu (un état par compte)
 TRADES_LOG = HERE / "trades_log.csv"
+
+
+def state_path(login) -> Path:
+    """Fichier d'état propre à un compte (capital simulé, bougies examinées...). Reprend l'ancien state.json une seule fois."""
+    p = HERE / f"state_{login}.json"
+    if not p.exists() and LEGACY_STATE.exists() and not list(HERE.glob("state_*.json")):
+        p.write_text(LEGACY_STATE.read_text(encoding="utf-8"), encoding="utf-8")
+    return p
+TRADE_LOCK = HERE / "bot_trade.lock"
+
+
+def pid_alive(pid: int) -> bool:
+    """Le processus `pid` tourne-t-il encore ? (sans jamais le toucher)"""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        k = ctypes.windll.kernel32
+        h = k.OpenProcess(0x1000, False, pid)      # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        ok = k.GetExitCodeProcess(h, ctypes.byref(code))
+        k.CloseHandle(h)
+        return bool(ok) and code.value == 259      # STILL_ACTIVE
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def trade_lock_pid() -> int | None:
+    """PID du bot qui trade actuellement (autre que nous), ou None."""
+    try:
+        pid = int(TRADE_LOCK.read_text().strip())
+    except (FileNotFoundError, ValueError):
+        return None
+    return pid if pid != os.getpid() and pid_alive(pid) else None
+
+
+def acquire_trade_lock() -> None:
+    """Un seul bot qui trade à la fois : deux bots en parallèle pourraient doubler les ordres."""
+    pid = trade_lock_pid()
+    if pid:
+        raise SystemExit(f"Un autre bot qui trade tourne déjà (PID {pid}). Arrête-le d'abord pour éviter de doubler les ordres. "
+                         f"(Si c'est une erreur, supprime le fichier {TRADE_LOCK.name}.)")
+    TRADE_LOCK.write_text(str(os.getpid()))
+    atexit.register(lambda: TRADE_LOCK.unlink(missing_ok=True))
 mp = MTFParams()
 log = logging.getLogger("bot")
 
@@ -329,6 +381,7 @@ def cycle(symbols: dict, trade: bool, lines_only: bool = False) -> None:
 
 
 def main() -> None:
+    global STATE_FILE
     ap = argparse.ArgumentParser()
     ap.add_argument("--trade", action="store_true", help="envoyer de vrais ordres (sinon essai à blanc)")
     ap.add_argument("--once", action="store_true", help="un seul passage")
@@ -344,9 +397,12 @@ def main() -> None:
         if args.trade:
             raise SystemExit("--ignore-age est interdit avec --trade (il entrerait sur des signaux périmés).")
         config.MAX_SIGNAL_AGE_S = 10 ** 9
+    if args.trade and not args.lines_only:
+        acquire_trade_lock()
     if not mt5.initialize():
         raise SystemExit(f"Impossible de se connecter à MT5 (ouvre-le et connecte-toi) : {mt5.last_error()}")
     acc = mt5.account_info()
+    STATE_FILE = state_path(acc.login)
     is_demo = acc.trade_mode == mt5.ACCOUNT_TRADE_MODE_DEMO
     log.info("Compte %s | %s | %s | solde=%.2f %s", acc.login, acc.server, "DÉMO" if is_demo else "RÉEL", acc.balance, acc.currency)
     if args.trade and not is_demo and not args.allow_real:
