@@ -123,31 +123,18 @@ main{padding:26px 30px 60px;max-width:1320px}
 .empty .ico{width:34px;height:34px;color:var(--dim);margin-bottom:10px}
 
 /* ---- journal ---- */
-.seg{display:inline-flex;border:1px solid var(--line2);border-radius:11px;padding:3px;background:color-mix(in srgb,var(--bg2) 60%,transparent)}
-.seg button{border:0;background:transparent;color:var(--muted);padding:6px 14px;border-radius:8px;font-weight:650;font-size:12.5px;cursor:pointer}
-.seg button.on{background:var(--text);color:var(--bg)}
 .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .fchip{border:1px solid var(--line2);background:transparent;color:var(--muted);padding:6px 13px;border-radius:99px;font-weight:650;font-size:12.5px;cursor:pointer}
 .fchip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.logwrap{position:relative}
+.jump{position:absolute;right:18px;bottom:16px;border:0;border-radius:99px;padding:8px 15px;font-weight:700;font-size:12.5px;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--ink);box-shadow:0 8px 22px rgba(52,211,153,.3)}
 .search{width:200px;padding:8px 12px;font-size:13px}
-.log{height:520px;overflow:auto;padding:8px 6px;font-size:12.6px;line-height:1.7;border-radius:14px;background:color-mix(in srgb,var(--bg2) 75%,transparent);border:1px solid var(--line)}
-.feed,.log{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.log{height:clamp(340px,calc(100vh - 430px),760px);overflow:auto;padding:8px 6px;font-size:12.6px;line-height:1.7;border-radius:14px;background:color-mix(in srgb,var(--bg2) 75%,transparent);border:1px solid var(--line)}
+.log{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
 .row{display:flex;gap:12px;padding:1px 12px 1px 11px;border-left:2px solid transparent;white-space:pre-wrap;word-break:break-word}
 .row .tm{color:var(--dim);flex:none}.row.sig{border-color:var(--green)}.row.sig .m{color:var(--green)}.row.ref{border-color:var(--amber)}.row.ref .m{color:var(--amber)}
 .row.err{border-color:var(--red)}.row.err .m{color:var(--red)}.row.pass .m{color:var(--dim)}.row.sys .m{color:var(--blue)}
-.feed{display:flex;flex-direction:column;height:520px;overflow:auto;margin:0 -6px;padding:0 6px}
-.ev{display:grid;grid-template-columns:44px 10px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 4px;border-top:1px solid var(--line)}
-.ev:first-child{border-top:0}
-.ev .tm{color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums;padding-top:1px}
-.ev .pt{width:9px;height:9px;border-radius:50%;margin-top:6px;background:var(--dim)}
-.ev .tx b{display:block;font-size:13.5px;font-weight:650}.ev .tx small{display:block;color:var(--muted);font-size:12.3px;margin-top:1px}
-.ev .st{font-size:11px;font-weight:750;padding:3px 9px;border-radius:99px;white-space:nowrap;margin-top:1px;background:color-mix(in srgb,var(--dim) 18%,transparent);color:var(--muted)}
-.ev.ok .pt{background:var(--green)}.ev.ok .st{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
-.ev.ref .pt{background:var(--amber)}.ev.ref .st{background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber)}
-.ev.sig .pt{background:var(--blue)}.ev.sig .st{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
-.ev.err .pt{background:var(--red)}.ev.err .st{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
-.ev.sys .pt{background:var(--text)}.ev.idle .tx b{color:var(--muted);font-weight:600}
 
 /* ---- bilan / comptes / réglages ---- */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
@@ -240,14 +227,13 @@ main{padding:26px 30px 60px;max-width:1320px}
         </div>
         <div class="card pad">
           <div class="h">
-            <div class="seg" id="seg"><button class="on" data-m="full">Complet</button><button data-m="sum">Résumé</button></div>
-            <div class="tools" id="tools">
+            <h2>Journal en direct</h2>
+            <div class="tools">
               <div class="chips" id="chips"><button class="fchip on" data-f="all">Tout</button><button class="fchip" data-f="sig">Signaux</button><button class="fchip" data-f="ref">Refus</button><button class="fchip" data-f="err">Erreurs</button></div>
               <input class="inp search" id="q" placeholder="Rechercher…" aria-label="Rechercher dans le journal">
             </div>
           </div>
-          <div class="log mono" id="log" tabindex="0" aria-label="Journal du bot"></div>
-          <div class="feed hidden" id="recent"></div>
+          <div class="logwrap"><div class="log mono" id="log" tabindex="0" aria-label="Journal du bot"></div><button class="jump hidden" id="jump">↓ Dernières lignes</button></div>
         </div>
       </section>
 
@@ -287,7 +273,7 @@ main{padding:26px 30px 60px;max-width:1320px}
 const TOKEN = "__TOKEN__";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let S = null, view = "dash", LOGS = [], lastId = 0, filter = "all", query = "", jmode = "full", counts = {sig:0, ref:0};
+let S = null, view = "dash", LOGS = [], lastId = 0, filter = "all", query = "", counts = {sig:0, ref:0};
 const TITLES = {dash:"Tableau de bord", bilan:"Bilan", set:"Réglages", acc:"Comptes"};
 const ICO = {eye:'<svg class="ico" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   out:'<svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>',
@@ -456,60 +442,34 @@ function renderLog(){
   const box = $("log"); box.textContent = ""; const q = query.toLowerCase();
   const items = LOGS.filter(l => (filter === "all" || l.k === filter) && (!q || l.msg.toLowerCase().includes(q))).slice(-600);
   if(!items.length){ box.innerHTML = '<div class="empty" style="padding:50px 10px"><b>Rien pour l\'instant</b>Le journal se remplit dès que le bot démarre.</div>'; return; }
-  items.forEach(l => box.appendChild(rowEl(l))); box.scrollTop = box.scrollHeight;
+  items.forEach(l => box.appendChild(rowEl(l))); toBottom();
 }
-/* résumé : une ligne par événement (démarrage, arrêt, signaux et pourquoi ils sont pris ou non) */
-let EV = [], pend = null, passHad = 0, ageMsg = false;
-const pushEv = e => { EV.push(e); if(EV.length > 300) EV = EV.slice(-200); return e; };
-const sideFr = s => /achat/i.test(s) ? "Achat" : "Vente";
-function reasonFr(r){
-  let m;
-  if((m = r.match(/lot minimum ([\d.]+) risquerait ([\d.]+) \(([\d.]+) %/))) return `Lot minimum trop gros : ${money(parseFloat(m[2]))} à risque (${m[3]} %)`;
-  if(/marge requise/.test(r)) return "Marge insuffisante";
-  if((m = r.match(/spread .*?= ([\d.]+) R/))) return `Spread trop cher (${Math.round(parseFloat(m[1]) * 100)} % du stop)`;
-  return r.slice(0, 80);
+/* suivi automatique : le journal défile tout seul vers les dernières lignes, sauf si tu remontes pour lire */
+const logBox = $("log");
+const atBottom = () => logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 40;
+const toBottom = () => { logBox.scrollTop = logBox.scrollHeight; $("jump").classList.add("hidden"); };
+const syncJump = () => $("jump").classList.toggle("hidden", atBottom());
+logBox.addEventListener("scroll", syncJump);
+$("jump").onclick = toBottom;
+const matches = l => (filter === "all" || l.k === filter) && (!query || l.msg.toLowerCase().includes(query.toLowerCase()));
+function addRow(l){
+  if(!matches(l)) return;
+  if(logBox.querySelector(".empty")) logBox.textContent = "";
+  const stick = atBottom();                       // tu es en bas : on suit ; tu as remonté lire : on ne te déplace pas
+  logBox.appendChild(rowEl(l));
+  while(logBox.children.length > 700) logBox.removeChild(logBox.firstChild);
+  if(stick) toBottom(); else syncJump();
 }
-function ingest(msg, tm){
-  let m;
-  if(/^=== démarrage/.test(msg)){ pend = null; passHad = 0; ageMsg = false; return pushEv({tm, k:"sys", t:"Bot démarré"}); }
-  if(/^--- le bot s'est arrêté/.test(msg)){ pend = null; return pushEv({tm, k:"sys", t:"Bot arrêté"}); }
-  if(/^--- passage/.test(msg)){ passHad = 0; ageMsg = false; return; }
-  if((m = msg.match(/^(.+?) : SIGNAL (ACHAT|VENTE) sur ligne (\w+).*?lots=([\d.]+) risque=([\d.]+)/))){
-    passHad++; pend = pushEv({tm, k:"sig", t:`${m[1]} · ${sideFr(m[2])}`, d:`Ligne ${m[3]} · ${m[4]} lot · risque ${money(parseFloat(m[5]))}`, st:"Signal"}); return; }
-  if(/^ORDRE OK/.test(msg)){ if(pend){ pend.k = "ok"; pend.st = "Pris"; pend = null; } else pushEv({tm, k:"ok", t:"Position ouverte", st:"Pris"}); return; }
-  if(/ORDRE (REFUSÉ|INVALIDE)/.test(msg)){ if(pend){ pend.k = "ref"; pend.st = "Pas pris"; pend.d += " · refusé par MT5"; pend = null; } return; }
-  if((m = msg.match(/^(.+?) : signal (achat|vente)(?: \(ligne (\w+)\))? REFUSÉ : (.*)$/))){
-    passHad++; return pushEv({tm, k:"ref", t:`${m[1]} · ${sideFr(m[2])}`, d:(m[3] ? `Ligne ${m[3]} · ` : "") + reasonFr(m[4]), st:"Pas pris"}); }
-  if((m = msg.match(/^(.+?) : signal (achat|vente) ignoré \(stop trop proche/))){ passHad++; return pushEv({tm, k:"ref", t:`${m[1]} · ${sideFr(m[2])}`, d:"Stop trop proche du prix", st:"Pas pris"}); }
-  if(/Limite de perte du jour/.test(msg)) return pushEv({tm, k:"ref", t:"Limite de perte du jour atteinte", d:"Plus de nouveau trade aujourd'hui", st:"Pause"});
-  if(/aucune NOUVELLE entrée/.test(msg)){ ageMsg = true; return pushEv({tm, k:"idle", t:"Pas d'entrée avant la prochaine heure", d:"La dernière bougie est trop ancienne"}); }
-  if(/prochain passage dans/.test(msg)){ if(!passHad && !ageMsg) pushEv({tm, k:"idle", t:"Passage terminé : aucun signal"}); return; }
-  if(/ERROR|Traceback|ÉCHEC|Exception/.test(msg)) return pushEv({tm, k:"err", t:"Erreur", d:msg.slice(0, 90), st:"!"});
-}
-function renderRecent(){
-  const box = $("recent"); box.textContent = "";
-  if(!EV.length){ box.innerHTML = '<div class="empty" style="padding:50px 10px"><b>Rien pour l\'instant</b></div>'; return; }
-  EV.slice(-60).reverse().forEach(e => { const d = document.createElement("div"); d.className = "ev " + e.k;
-    d.innerHTML = `<span class="tm"></span><span class="pt"></span><div class="tx"><b></b><small></small></div><span class="st"></span>`;
-    d.children[0].textContent = (e.tm || "").slice(0, 5); d.querySelector("b").textContent = e.t; const s = d.querySelector("small"); s.textContent = e.d || ""; if(!e.d) s.remove();
-    const st = d.querySelector(".st"); if(e.st) st.textContent = e.st; else st.remove(); box.appendChild(d); });
-}
-function renderJournal(){
-  const full = jmode === "full";
-  $("log").classList.toggle("hidden", !full); $("tools").classList.toggle("hidden", !full); $("recent").classList.toggle("hidden", full);
-  document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", b.dataset.m === jmode));
-  full ? renderLog() : renderRecent();
-}
-$("seg").addEventListener("click", e => { const b = e.target.closest("button"); if(b){ jmode = b.dataset.m; renderJournal(); } });
+function renderJournal(){ renderLog(); }
 $("chips").addEventListener("click", e => { const b = e.target.closest(".fchip"); if(!b) return; filter = b.dataset.f; document.querySelectorAll(".fchip").forEach(c => c.classList.toggle("on", c === b)); renderLog(); });
 $("q").addEventListener("input", e => { query = e.target.value; renderLog(); });
 async function pollLog(){
   try{ const j = await api("/api/log?after=" + lastId); let add = false;
     j.lines.forEach(([id, raw]) => { lastId = id; const m = raw.match(/^\d{4}-\d\d-\d\d (\d\d:\d\d:\d\d),\d+ (\w+) (.*)$/s);
       const l = {tm:m ? m[1] : "", msg:fr(m ? m[3] : raw), k:classify(raw)};
-      if(l.k === "sig" && /SIGNAL/.test(raw)) counts.sig++; if(l.k === "ref" && /REFUSÉ/.test(raw)) counts.ref++; LOGS.push(l); ingest(l.msg, l.tm); add = true; });
+      if(l.k === "sig" && /SIGNAL/.test(raw)) counts.sig++; if(l.k === "ref" && /REFUSÉ/.test(raw)) counts.ref++; LOGS.push(l); if(view === "dash") addRow(l); add = true; });
     if(LOGS.length > 2500) LOGS = LOGS.slice(-2000);
-    if(add){ $("kSig").textContent = counts.sig; $("kSigN").textContent = counts.sig || counts.ref ? `${counts.ref} refusé(s) par les filtres` : "aucun pour l'instant"; if(view === "dash") renderJournal(); } }
+    if(add){ $("kSig").textContent = counts.sig; $("kSigN").textContent = counts.sig || counts.ref ? `${counts.ref} refusé(s) par les filtres` : "aucun pour l'instant"; } }
   catch(e){} setTimeout(pollLog, 1500);
 }
 
