@@ -14,7 +14,7 @@ import pandas as pd
 
 from strategy import Params, atr, best_line, find_pivots
 
-GRAN_S = {"H4": 14400, "D1": 86400, "W1": 604800}
+GRAN_S = {"H1": 3600, "H4": 14400, "D1": 86400, "W1": 604800}
 
 
 @dataclass
@@ -30,6 +30,8 @@ class MTFParams:
     pivot_n: int = 3                   # pivots H1 pour le stop suiveur
     atr_n: int = 14
     cost_atr: float = 0.05
+    cost_price: float = 0.0            # si > 0 : spread réel en prix (remplace cost_atr)
+    entry_sec: int = 3600              # durée d'une bougie de l'échelle d'entrée (3600 = H1, 900 = M15)
     max_bars: int = 2000
     # Mode d'entrée : "touch" = rebond direct sur la ligne ; "reclaim" = entrée en deux temps :
     # le prix teste la zone du stop (casse la ligne d'au moins `reclaim_depth` ATR dans les
@@ -46,6 +48,7 @@ def epoch(idx) -> np.ndarray:
 def make_htf(h1: pd.DataFrame, d1: pd.DataFrame) -> dict:
     agg = {"open": "first", "high": "max", "low": "min", "close": "last"}
     out = {
+        "H1": h1.resample("1h").agg(agg).dropna(),
         "H4": h1.resample("4h").agg(agg).dropna(),
         "D1": d1.copy(),
         "W1": d1.resample("W-MON", closed="left", label="left").agg(agg).dropna(),
@@ -90,7 +93,7 @@ def detect_reclaim(o, h, l, c, t, i, a, lines, mp: MTFParams):
     w = mp.reclaim_window
     if i - w < 1:
         return None
-    t_close = t[i] + 3600
+    t_close = t[i] + mp.entry_sec
     js = np.arange(i - w, i + 1)
     depth = mp.reclaim_depth * a
     for name in mp.htfs:
@@ -123,7 +126,7 @@ def detect_signal(o, h, l, c, t, i, a, lines, mp: MTFParams):
     Utilisé tel quel par le backtest et par le bot en direct."""
     if mp.entry_mode == "reclaim":
         return detect_reclaim(o, h, l, c, t, i, a, lines, mp)
-    t_close = t[i] + 3600
+    t_close = t[i] + mp.entry_sec
     for name in mp.htfs:
         opens, lns = lines[name]
         g = GRAN_S[name]
@@ -200,7 +203,7 @@ def backtest_mtf(h1: pd.DataFrame, d1: pd.DataFrame, mp: MTFParams = MTFParams()
         if exit_i is None:
             exit_i = min(n, entry_i + mp.max_bars) - 1
             exit_px = c[exit_i]
-        pnl = (exit_px - entry) * sgn - mp.cost_atr * a
+        pnl = (exit_px - entry) * sgn - (mp.cost_price if mp.cost_price > 0 else mp.cost_atr * a)
         trades.append({
             "side": side, "line": name, "touches": touches, "line_value": lv,
             "entry_i": entry_i, "exit_i": exit_i,
