@@ -23,7 +23,7 @@ import pandas as pd
 
 import config
 from mtf import GRAN_S, MTFParams, detect_signal, htf_lines, trail_stop
-from risk import daily_halt, lot_for_risk, spread_cost_r
+from risk import bot_day_halt, lot_for_risk, spread_cost_r
 from strategy import atr, find_pivots
 
 HERE = Path(__file__).parent
@@ -338,17 +338,23 @@ def cycle(symbols: dict, trade: bool, lines_only: bool = False) -> None:
     acc = mt5.account_info()
     st = load_state()
     sim_start = st.get("sim_start", time.time())
-    # Capital simulé = plafond + gains/pertes RÉELS du bot depuis son premier lancement (il bouge donc avec les résultats)
-    equity = config.CAPITAL_CAP + bot_pnl(sim_start) if config.CAPITAL_CAP else acc.equity
+    total_pnl = bot_pnl(sim_start)       # gains/pertes du BOT (positions fermées + ouvertes) depuis son premier lancement
+    # Capital utilisé pour les lots : le vrai capital du compte (ou, option avancée, un capital fictif + gains/pertes du bot)
+    equity = config.CAPITAL_CAP + total_pnl if config.CAPITAL_CAP else acc.equity
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    if st.get("day") != today:
-        st = {"sim_start": sim_start, "day": today, "start_equity": equity, "done": {}}
+    basis = f"cap:{config.CAPITAL_CAP}" if config.CAPITAL_CAP else "reel"
+    if st.get("day") != today or "day_pnl0" not in st or st.get("basis") != basis:
+        # nouveau jour, ou mode de capital changé (ex. fin du capital simulé) : on repart d'un point de départ propre
+        done0 = st.get("done", {}) if st.get("day") == today else {}
+        st = {"sim_start": sim_start, "day": today, "start_equity": equity, "day_pnl0": total_pnl, "basis": basis, "done": done0}
     st["sim_start"] = sim_start
     done = st.setdefault("done", {})
-    halted = daily_halt(equity, st["start_equity"], config.DAILY_LOSS_STOP_PCT)
+    # Arrêt du jour : basé sur les pertes du BOT uniquement (pas sur les autres positions ouvertes sur le compte)
+    day_pnl = total_pnl - st["day_pnl0"]
+    halted = bot_day_halt(day_pnl, st["start_equity"], config.DAILY_LOSS_STOP_PCT)
     if halted:
-        log.warning("Limite de perte du jour atteinte (%.2f -> %.2f) : plus de nouveaux trades aujourd'hui",
-                    st["start_equity"], equity)
+        log.warning("Limite de perte du jour atteinte : le bot a perdu %.2f aujourd'hui (limite %.2f) : plus de nouveaux trades aujourd'hui",
+                    -day_pnl, st["start_equity"] * config.DAILY_LOSS_STOP_PCT / 100)
 
     log.info("--- passage | capital=%.2f | positions du bot=%d/%d", equity, len(my_positions()), config.MAX_POSITIONS)
     line_rows = []

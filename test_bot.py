@@ -21,6 +21,18 @@ def test_daily_halt():
     assert daily_halt(0, 100, 3) and daily_halt(-5, 100, 3)
 
 
+def test_arret_du_jour_ne_regarde_que_le_bot():
+    from risk import bot_day_halt
+    assert not bot_day_halt(0.0, 27.66, 3)          # rien perdu : on trade
+    assert not bot_day_halt(-0.5, 27.66, 3)         # -0,50 $ < limite 0,83 $
+    assert bot_day_halt(-0.83, 27.66, 3)            # limite atteinte
+    assert bot_day_halt(-5.0, 27.66, 3)
+    assert not bot_day_halt(+3.0, 27.66, 3)         # le bot gagne : jamais bloqué
+    assert bot_day_halt(-0.1, 0, 3)                 # capital nul : bloqué
+    # le cas du bug : ancien départ à 100 $, capital réel 27,66 $ -> l'ancien test aurait bloqué à tort
+    assert daily_halt(27.66, 100.0, 3) and not bot_day_halt(0.0, 27.66, 3)
+
+
 def test_lot_jamais_au_dessus_du_risque_cible():
     rng = np.random.default_rng(1)
     for _ in range(500):

@@ -19,6 +19,11 @@ def daily_halt(equity: float, start_equity: float, loss_pct: float) -> bool:
     return equity <= 0 or equity < start_equity * (1 - loss_pct / 100)
 
 
+def bot_day_halt(day_pnl: float, start_equity: float, loss_pct: float) -> bool:
+    """True si le BOT a perdu `loss_pct` % (ou plus) du capital de départ de la journée. `day_pnl` = gain/perte du bot aujourd'hui."""
+    return start_equity <= 0 or day_pnl <= -start_equity * loss_pct / 100
+
+
 @dataclass
 class LotResult:
     lots: float
