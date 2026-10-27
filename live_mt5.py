@@ -171,6 +171,11 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
     # heure du SERVEUR (les bougies MT5 sont en heure serveur, pas en heure du PC)
     age = tk.time - (h1.index[-1].timestamp() + 3600)
     if age > config.MAX_SIGNAL_AGE_S:
+        if not getattr(look_for_entry, "age_warned", False):
+            look_for_entry.age_warned = True
+            log.info("Dernière bougie H1 fermée il y a %d min (> %d min) : aucune NOUVELLE entrée possible dans ce passage. "
+                     "Laisse le bot tourner (il agit à chaque heure pile) ou teste avec --ignore-age en essai à blanc.",
+                     age // 60, config.MAX_SIGNAL_AGE_S // 60)
         return False  # bougie trop ancienne : on n'entre pas en retard
 
     if htf is None:
@@ -241,6 +246,7 @@ def cycle(symbols: dict, trade: bool, lines_only: bool = False) -> None:
 
     log.info("--- passage | capital=%.2f | positions du bot=%d/%d", equity, len(my_positions()), config.MAX_POSITIONS)
     line_rows = []
+    look_for_entry.age_warned = False
     for label, symbol in symbols.items():
         h1 = rates(symbol, "H1")
         if h1 is None:
@@ -273,11 +279,17 @@ def main() -> None:
     ap.add_argument("--trade", action="store_true", help="envoyer de vrais ordres (sinon essai à blanc)")
     ap.add_argument("--once", action="store_true", help="un seul passage")
     ap.add_argument("--lines-only", action="store_true", help="exporter seulement les lignes pour l'indicateur (aucun trade)")
+    ap.add_argument("--ignore-age", action="store_true",
+                    help="essai à blanc seulement : analyse la dernière bougie même si elle est ancienne")
     ap.add_argument("--allow-real", action="store_true", help="autoriser un compte RÉEL (déconseillé)")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         handlers=[logging.StreamHandler(), logging.FileHandler(HERE / "bot.log", encoding="utf-8")])
+    if args.ignore_age:
+        if args.trade:
+            raise SystemExit("--ignore-age est interdit avec --trade (il entrerait sur des signaux périmés).")
+        config.MAX_SIGNAL_AGE_S = 10 ** 9
     if not mt5.initialize():
         raise SystemExit(f"Impossible de se connecter à MT5 (ouvre-le et connecte-toi) : {mt5.last_error()}")
     acc = mt5.account_info()
