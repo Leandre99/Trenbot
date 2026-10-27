@@ -104,7 +104,21 @@ button{font:inherit}
 main{padding:26px 30px 60px;max-width:1320px}
 .view{display:none;animation:in .25s ease} .view.on{display:block}
 @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.grid{display:grid;gap:18px}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}.g2e{grid-template-columns:1fr 1fr}
+.grid{display:grid;gap:18px}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}.g2b{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}.g2e{grid-template-columns:1fr 1fr}
+.feed,.log{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+/* fil d'activité : une ligne courte par événement */
+.feed{display:flex;flex-direction:column;max-height:330px;overflow:auto;margin:0 -6px;padding:0 6px}
+.ev{display:grid;grid-template-columns:44px 10px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 4px;border-top:1px solid var(--line)}
+.ev:first-child{border-top:0}
+.ev .tm{color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums;padding-top:1px}
+.ev .pt{width:9px;height:9px;border-radius:50%;margin-top:6px;background:var(--dim)}
+.ev .tx b{display:block;font-size:13.5px;font-weight:650}.ev .tx small{display:block;color:var(--muted);font-size:12.3px;margin-top:1px}
+.ev .st{font-size:11px;font-weight:750;padding:3px 9px;border-radius:99px;white-space:nowrap;margin-top:1px;background:color-mix(in srgb,var(--dim) 18%,transparent);color:var(--muted)}
+.ev.ok .pt{background:var(--green)}.ev.ok .st{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green)}
+.ev.ref .pt{background:var(--amber)}.ev.ref .st{background:color-mix(in srgb,var(--amber) 16%,transparent);color:var(--amber)}
+.ev.sig .pt{background:var(--blue)}.ev.sig .st{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--blue)}
+.ev.err .pt{background:var(--red)}.ev.err .st{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.ev.sys .pt{background:var(--text)}.ev.idle .tx b{color:var(--muted);font-weight:600}
 .mb{margin-bottom:18px}
 
 /* ---- hero / kpi ---- */
@@ -160,7 +174,7 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
 .toast.show{opacity:1;transform:translate(-50%,0)}.toast.err{background:var(--red);color:#fff}
 
 @media (max-width:1100px){.app{grid-template-columns:76px minmax(0,1fr)}.nav button span,.brand div,.side .foot,.nav .cnt{display:none}.nav button{justify-content:center}.nav button.on::before{left:-14px}
-  .g4{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}.kv{grid-template-columns:repeat(2,1fr)}}
+  .g4{grid-template-columns:repeat(2,1fr)}.g2,.g2b{grid-template-columns:1fr}.kv{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:760px){.lwrap{grid-template-columns:1fr}.lhero{display:none}.app{grid-template-columns:1fr}
   .side{position:fixed;bottom:0;top:auto;height:auto;width:100%;flex-direction:row;padding:6px 8px;z-index:40;border-right:0;border-top:1px solid var(--line)}.brand,.side .foot{display:none}
   .nav{grid-auto-flow:column;width:100%}.nav button{padding:10px 0}.nav button.on::before{display:none}main{padding:18px 16px 100px}.bar{padding:12px 16px}.menu{right:12px}
@@ -231,15 +245,15 @@ td{padding:13px 14px;border-top:1px solid var(--line)} td.r,th.r{text-align:righ
           <div class="card kpi"><div class="l">Positions ouvertes</div><div class="v" id="kPos">–</div><div class="n">stops posés chez le broker</div></div>
           <div class="card kpi"><div class="l">Signaux · session</div><div class="v" id="kSig">0</div><div class="n" id="kSigN">aucun pour l'instant</div></div>
         </div>
-        <div class="grid g2">
+        <div class="grid g2b">
           <div class="card pad">
-            <div class="h"><h2>Gains cumulés du bot</h2><span class="muted" id="chartNote"></span></div>
-            <div class="chartbox" id="chartBox"><canvas id="chart" role="img" aria-label="Gains cumulés du bot sur 30 jours"></canvas><div class="cross" id="cross"></div><div class="tip" id="tip"></div></div>
-            <div class="empty hidden" id="chartEmpty"><svg class="ico" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/></svg><b>Aucun trade fermé pour l'instant</b>La courbe apparaît dès que le bot clôture des trades.</div>
+            <div class="h"><h2>Activité récente</h2><button class="btn sm ghost" data-go="log">Journal complet</button></div>
+            <div class="feed" id="recent"></div>
           </div>
           <div class="card pad">
-            <div class="h"><h2>Activité récente</h2><button class="btn sm ghost" data-go="log">Tout voir</button></div>
-            <div class="log mono mini" id="recent"></div>
+            <div class="h"><h2>Gains cumulés</h2><span class="muted" id="chartNote"></span></div>
+            <div class="chartbox" id="chartBox"><canvas id="chart" role="img" aria-label="Gains cumulés du bot sur 30 jours"></canvas><div class="cross" id="cross"></div><div class="tip" id="tip"></div></div>
+            <div class="empty hidden" id="chartEmpty"><svg class="ico" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/></svg><b>Aucun trade fermé</b></div>
           </div>
         </div>
       </section>
@@ -489,13 +503,49 @@ function renderLog(){
   const box = $("log"); box.textContent = ""; const q = query.toLowerCase();
   LOGS.filter(l => (filter === "all" || l.k === filter) && (!q || l.msg.toLowerCase().includes(q))).slice(-500).forEach(l => box.appendChild(rowEl(l))); box.scrollTop = box.scrollHeight;
 }
-function renderRecent(){ const box = $("recent"); box.textContent = ""; const items = LOGS.filter(l => l.k !== "pass").slice(-9); if(!items.length){ box.innerHTML = '<div class="empty" style="padding:24px 10px">Rien pour l\'instant.</div>'; return; } items.forEach(l => box.appendChild(rowEl(l))); box.scrollTop = box.scrollHeight; }
+/* ---------- fil d'activité : démarrage, arrêt, signaux et pourquoi ils sont pris ou non ---------- */
+let EV = [], pend = null, passHad = 0, ageMsg = false;
+const pushEv = e => { EV.push(e); if(EV.length > 300) EV = EV.slice(-200); return e; };
+const sideFr = s => /long/i.test(s) ? "Achat" : "Vente";
+const num = x => parseFloat(x);
+function reasonFr(r){
+  let m;
+  if((m = r.match(/lot minimum ([\d.]+) risquerait ([\d.]+) \(([\d.]+) %/))) return `Lot minimum trop gros : ${money(num(m[2]))} à risque (${m[3]} %)`;
+  if(/marge requise/.test(r)) return "Marge insuffisante";
+  if((m = r.match(/spread .*?= ([\d.]+) R/))) return `Spread trop cher (${m[1]} R du stop)`;
+  return r.slice(0, 80);
+}
+function ingest(msg, tm){
+  let m;
+  if(/^=== démarrage/.test(msg)){ pend = null; passHad = 0; ageMsg = false; return pushEv({tm, k:"sys", t:"Bot démarré"}); }
+  if(/^--- le bot s'est arrêté/.test(msg)){ pend = null; return pushEv({tm, k:"sys", t:"Bot arrêté"}); }
+  if(/^--- passage/.test(msg)){ passHad = 0; ageMsg = false; return; }
+  if((m = msg.match(/^(.+?) : SIGNAL (LONG|SHORT) sur ligne (\w+).*?lots=([\d.]+) risque=([\d.]+)/))){
+    passHad++; pend = pushEv({tm, k:"sig", t:`${m[1]} · ${sideFr(m[2])}`, d:`Ligne ${m[3]} · ${m[4]} lot · risque ${money(num(m[5]))}`, st:"Signal"}); return; }
+  if(/^ORDRE OK/.test(msg)){ if(pend){ pend.k = "ok"; pend.st = "Pris"; pend = null; } else pushEv({tm, k:"ok", t:"Position ouverte", st:"Pris"}); return; }
+  if(/ORDRE (REFUSÉ|INVALIDE)/.test(msg)){ if(pend){ pend.k = "ref"; pend.st = "Pas pris"; pend.d += " · refusé par MT5"; pend = null; } return; }
+  if((m = msg.match(/^(.+?) : signal (long|short)(?: \(ligne (\w+)\))? REFUSÉ : (.*)$/))){
+    passHad++; return pushEv({tm, k:"ref", t:`${m[1]} · ${sideFr(m[2])}`, d:(m[3] ? `Ligne ${m[3]} · ` : "") + reasonFr(m[4]), st:"Pas pris"}); }
+  if((m = msg.match(/^(.+?) : signal (long|short) ignoré \(stop trop proche/))){ passHad++; return pushEv({tm, k:"ref", t:`${m[1]} · ${sideFr(m[2])}`, d:"Stop trop proche du prix", st:"Pas pris"}); }
+  if(/Limite de perte du jour/.test(msg)) return pushEv({tm, k:"ref", t:"Limite de perte du jour atteinte", d:"Plus de nouveau trade aujourd'hui", st:"Pause"});
+  if(/aucune NOUVELLE entrée/.test(msg)){ ageMsg = true; return pushEv({tm, k:"idle", t:"Pas d'entrée avant la prochaine heure", d:"La dernière bougie est trop ancienne"}); }
+  if(/prochain passage dans/.test(msg)){ if(!passHad && !ageMsg) pushEv({tm, k:"idle", t:"Passage terminé : aucun signal"}); return; }
+  if(/ERROR|Traceback|ÉCHEC|Exception/.test(msg)) return pushEv({tm, k:"err", t:"Erreur", d:msg.slice(0, 90), st:"!"});
+}
+function renderRecent(){
+  const box = $("recent"); box.textContent = "";
+  if(!EV.length){ box.innerHTML = '<div class="empty" style="padding:30px 10px">Rien pour l\'instant.</div>'; return; }
+  EV.slice(-30).reverse().forEach(e => { const d = document.createElement("div"); d.className = "ev " + e.k;
+    d.innerHTML = `<span class="tm"></span><span class="pt"></span><div class="tx"><b></b><small></small></div><span class="st"></span>`;
+    d.children[0].textContent = (e.tm || "").slice(0, 5); d.querySelector("b").textContent = e.t; const s = d.querySelector("small"); s.textContent = e.d || ""; if(!e.d) s.remove();
+    const st = d.querySelector(".st"); if(e.st) st.textContent = e.st; else st.remove(); box.appendChild(d); });
+}
 $("chips").addEventListener("click", e => { const b = e.target.closest(".fchip"); if(!b) return; filter = b.dataset.f; document.querySelectorAll(".fchip").forEach(c => c.classList.toggle("on", c === b)); renderLog(); });
 $("q").addEventListener("input", e => { query = e.target.value; renderLog(); });
 async function pollLog(){
   try{ const j = await api("/api/log?after=" + lastId); let add = false;
     j.lines.forEach(([id, raw]) => { lastId = id; const m = raw.match(/^\d{4}-\d\d-\d\d (\d\d:\d\d:\d\d),\d+ (\w+) (.*)$/s); const l = {tm:m ? m[1] : "", msg:m ? m[3] : raw, k:classify(raw)};
-      if(l.k === "sig" && /SIGNAL/.test(raw)) counts.sig++; if(l.k === "ref" && /REFUSÉ/.test(raw)) counts.ref++; LOGS.push(l); add = true; });
+      if(l.k === "sig" && /SIGNAL/.test(raw)) counts.sig++; if(l.k === "ref" && /REFUSÉ/.test(raw)) counts.ref++; LOGS.push(l); ingest(l.msg, l.tm); add = true; });
     if(LOGS.length > 2500) LOGS = LOGS.slice(-2000);
     if(add){ $("kSig").textContent = counts.sig; $("kSigN").textContent = counts.sig || counts.ref ? `${counts.ref} refusé(s) par les filtres` : "aucun pour l'instant"; renderRecent(); if(view === "log") renderLog(); } }
   catch(e){} setTimeout(pollLog, 1500);

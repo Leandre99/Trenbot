@@ -55,6 +55,8 @@ class Bot:
         self.started_at = None
 
     def push(self, text: str):
+        if text.startswith(("===", "---")):          # messages du tableau de bord : même format horodaté que ceux du bot
+            text = datetime.now().strftime("%Y-%m-%d %H:%M:%S,000 INFO ") + text
         with self.lock:
             self.lines.append((self.next_id, text.rstrip("\n")))
             self.next_id += 1
