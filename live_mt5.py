@@ -7,10 +7,11 @@ Utilisation (MT5 doit être ouvert et connecté à ton compte) :
 Le bot ne gère jamais ton mot de passe : il se branche sur le MT5 déjà connecté.
 """
 import argparse
+import csv
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import MetaTrader5 as mt5
@@ -19,11 +20,12 @@ import pandas as pd
 
 import config
 from mtf import GRAN_S, MTFParams, detect_signal, htf_lines, trail_stop
-from risk import lot_for_risk
+from risk import daily_halt, lot_for_risk, spread_cost_r
 from strategy import atr, find_pivots
 
 HERE = Path(__file__).parent
 STATE_FILE = HERE / "state.json"
+TRADES_LOG = HERE / "trades_log.csv"
 mp = MTFParams()
 log = logging.getLogger("bot")
 
@@ -86,10 +88,43 @@ def filling_type(symbol: str) -> int:
     return mt5.ORDER_FILLING_RETURN
 
 
+def check_order(request: dict, what: str) -> bool:
+    """Fait valider l'ordre par MT5 (volume, stops, marge, mode d'exécution) SANS l'envoyer."""
+    res = mt5.order_check(request)
+    if res is None:
+        log.error("order_check impossible pour %s : %s", what, mt5.last_error())
+        return False
+    if res.retcode not in (0, mt5.TRADE_RETCODE_DONE):
+        log.error("ORDRE INVALIDE %s | code=%s %s", what, res.retcode, res.comment)
+        return False
+    return True
+
+
+def bot_pnl(since: float) -> float:
+    """Gain/perte du bot depuis `since` (positions fermées + positions ouvertes), via son identifiant MAGIC."""
+    d0 = datetime.fromtimestamp(since - 86400, timezone.utc)
+    deals = mt5.history_deals_get(d0, datetime.now(timezone.utc) + timedelta(days=2)) or []
+    realized = sum(d.profit + d.commission + d.swap + d.fee for d in deals if d.magic == config.MAGIC)
+    floating = sum(p.profit + p.swap for p in my_positions())
+    return realized + floating
+
+
+def append_trade_log(row: dict) -> None:
+    new = not TRADES_LOG.exists()
+    with TRADES_LOG.open("a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(row))
+        if new:
+            w.writeheader()
+        w.writerow(row)
+
+
 def send(request: dict, trade: bool, what: str) -> bool:
+    ok = check_order(request, what)
     if not trade:
-        log.info("[ESSAI À BLANC] %s | %s", what, request)
-        return True
+        log.info("[ESSAI À BLANC] %s | validation MT5 : %s | %s", what, "OK" if ok else "INVALIDE", request)
+        return ok
+    if not ok:
+        return False
     res = mt5.order_send(request)
     if res is None or res.retcode != mt5.TRADE_RETCODE_DONE:
         log.error("ORDRE REFUSÉ %s | code=%s %s", what, getattr(res, "retcode", None), getattr(res, "comment", mt5.last_error()))
@@ -205,7 +240,7 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
 
     # le spread est un coût payé d'entrée : s'il représente une grosse part de la distance au stop, le trade est perdant d'avance
     spread = tick.ask - tick.bid
-    cost_r = spread / abs(entry - sl)
+    cost_r = spread_cost_r(spread, entry, sl)
     if cost_r > config.MAX_SPREAD_R:
         log.info("%s : signal %s REFUSÉ : spread %.5f = %.2f R de la distance au stop (max %.2f R)",
                  label, side, spread, cost_r, config.MAX_SPREAD_R)
@@ -222,7 +257,7 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
     margin = mt5.order_calc_margin(order_type, symbol, lots.lots, entry)
     free = mt5.account_info().margin_free
     if config.CAPITAL_CAP:
-        free = min(free, config.CAPITAL_CAP)
+        free = min(free, equity)   # on raisonne sur le capital simulé, pas sur les 10 000 $ de la démo
     if margin is None or margin > free * config.MAX_MARGIN_PCT / 100:
         log.info("%s : signal %s REFUSÉ : marge requise %s > %d %% de la marge libre (%.2f)",
                  label, side, f"{margin:.2f}" if margin is not None else "?", config.MAX_MARGIN_PCT, free)
@@ -236,19 +271,29 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
            "deviation": config.DEVIATION, "magic": config.MAGIC,
            "comment": f"trendbot {name}", "type_time": mt5.ORDER_TIME_GTC,
            "type_filling": filling_type(symbol)}
-    return send(req, trade, f"{side.upper()} {symbol} {lots.lots} lots")
+    ok = send(req, trade, f"{side.upper()} {symbol} {lots.lots} lots")
+    if ok and trade:
+        append_trade_log({"heure_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), "marche": symbol,
+                          "sens": side, "lots": lots.lots, "entree": round(entry, info.digits),
+                          "stop": round(sl, info.digits), "risque_$": round(lots.risk_money, 2),
+                          "risque_%": round(lots.risk_pct, 2), "ligne": name, "touches": touches,
+                          "spread_R": round(cost_r, 3), "capital_simule": round(equity, 2)})
+    return ok
 
 
 # ---------------------------------------------------------------- un passage complet
 def cycle(symbols: dict, trade: bool, lines_only: bool = False) -> None:
     acc = mt5.account_info()
-    equity = min(acc.equity, config.CAPITAL_CAP) if config.CAPITAL_CAP else acc.equity
     st = load_state()
+    sim_start = st.get("sim_start", time.time())
+    # Capital simulé = plafond + gains/pertes RÉELS du bot depuis son premier lancement (il bouge donc avec les résultats)
+    equity = config.CAPITAL_CAP + bot_pnl(sim_start) if config.CAPITAL_CAP else acc.equity
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if st.get("day") != today:
-        st = {"day": today, "start_equity": equity, "done": {}}
+        st = {"sim_start": sim_start, "day": today, "start_equity": equity, "done": {}}
+    st["sim_start"] = sim_start
     done = st.setdefault("done", {})
-    halted = equity < st["start_equity"] * (1 - config.DAILY_LOSS_STOP_PCT / 100)
+    halted = daily_halt(equity, st["start_equity"], config.DAILY_LOSS_STOP_PCT)
     if halted:
         log.warning("Limite de perte du jour atteinte (%.2f -> %.2f) : plus de nouveaux trades aujourd'hui",
                     st["start_equity"], equity)
@@ -313,7 +358,18 @@ def main() -> None:
     log.info("Marchés suivis : %s", ", ".join(f"{k}={v}" for k, v in symbols.items()))
     try:
         while True:
-            cycle(symbols, args.trade and not args.lines_only, args.lines_only)
+            try:
+                ti = mt5.terminal_info()
+                if ti is None or not ti.connected:
+                    log.warning("MT5 déconnecté : tentative de reconnexion")
+                    mt5.shutdown()
+                    if not mt5.initialize():
+                        raise RuntimeError(f"reconnexion MT5 impossible : {mt5.last_error()}")
+                cycle(symbols, args.trade and not args.lines_only, args.lines_only)
+            except Exception:
+                if args.once:
+                    raise
+                log.exception("Erreur pendant le passage : le bot continue au prochain tour (dans 1 h)")
             if args.once:
                 break
             # prochain passage : 5 s après la clôture de la prochaine bougie H1

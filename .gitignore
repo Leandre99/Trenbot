@@ -3,5 +3,6 @@ cache/
 *.csv
 bot.log
 state.json
+trades_log.csv
 .env
 *.png

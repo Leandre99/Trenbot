@@ -8,6 +8,17 @@ import math
 from dataclasses import dataclass
 
 
+def spread_cost_r(spread: float, entry: float, sl: float) -> float:
+    """Coût du spread exprimé en R (1 R = distance entrée -> stop)."""
+    dist = abs(entry - sl)
+    return float("inf") if dist <= 0 else spread / dist
+
+
+def daily_halt(equity: float, start_equity: float, loss_pct: float) -> bool:
+    """True si le capital a baissé de `loss_pct` % (ou plus) depuis le début de la journée, ou s'il est épuisé."""
+    return equity <= 0 or equity < start_equity * (1 - loss_pct / 100)
+
+
 @dataclass
 class LotResult:
     lots: float

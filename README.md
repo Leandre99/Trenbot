@@ -1,9 +1,11 @@
 # trendbot
 
-Bot MT5 basé sur la stratégie « rebond sur ligne de tendance » avec analyse descendante
-(lignes tracées en semaine / jour / 4h, entrée en H1, stop derrière la ligne, stop suiveur sur les pivots).
+Bot MT5 : rebond sur lignes de tendance avec analyse descendante.
+Lignes tracées en **semaine / jour / 4h**, entrée à la clôture de chaque bougie **H1**, achats et ventes,
+stop-loss dès l'ouverture, puis stop suiveur derrière les pivots. Pas de take-profit : on sort au stop.
 
-> **Démo uniquement pour l'instant.** Le backtest (1 an, Deriv) est mitigé : voir « Limites » plus bas.
+> **Compte démo uniquement.** Le bot refuse de trader sur un compte réel. Le backtest (1 an) est positif mais
+> inégal selon les marchés et les périodes : le vrai test, ce sont quelques semaines en démo (voir `report.py`).
 
 ## Installation (Windows)
 
@@ -11,62 +13,72 @@ Bot MT5 basé sur la stratégie « rebond sur ligne de tendance » avec analyse 
 pip install -r requirements.txt
 ```
 
-1. Ouvre **MetaTrader 5** et connecte-toi à ton compte **démo** (le bot ne gère jamais ton mot de passe).
-2. Dans MT5 : *Outils > Options > Expert Advisors* : coche « Autoriser le trading algorithmique ».
+1. Ouvre **MetaTrader 5**, connecte-toi à ton compte **démo** (le bot ne gère jamais ton mot de passe).
+2. *Outils > Options > Expert Advisors* : coche « Autoriser le trading algorithmique ».
 
 ## Utilisation
 
 ```
-python live_mt5.py            # essai à blanc : analyse et affiche, aucun ordre
-python live_mt5.py --trade    # envoie des ordres (refusé si le compte n'est pas une démo)
-python live_mt5.py --once     # un seul passage
+python live_mt5.py                 # essai à blanc en continu : analyse, valide chaque ordre auprès de MT5, n'envoie RIEN
+python live_mt5.py --trade         # trade sur la démo, en continu (se réveille à chaque heure pile)
+python live_mt5.py --once          # un seul passage
+python live_mt5.py --once --ignore-age   # essai à blanc : analyse la dernière bougie même si elle est ancienne
+python live_mt5.py --lines-only    # exporte seulement les lignes pour l'indicateur (aucun trade)
 ```
 
-Le bot se réveille 5 s après la clôture de chaque bougie H1. Laisse le PC et MT5 allumés.
+Laisse le PC et MT5 allumés. Un passage dure 1 à 3 minutes (24 marchés). Arrêt : `Ctrl + C` (les positions
+ouvertes gardent leur stop-loss chez le broker). Si une erreur survient pendant un passage, le bot le note dans
+`bot.log` et continue à l'heure suivante ; si MT5 se déconnecte, il tente de se reconnecter.
 
-## Voir les lignes de tendance sur les graphiques MT5
-
-Le bot écrit ses lignes (W1 épais, D1 moyen, H4 fin ; vert = haussière, rouge = baissière) dans
-`Common\Files\trendbot_lines.csv` à chaque passage. L'indicateur `mql5/TrendBotLines.mq5` les dessine.
-
-```
-python install_indicator.py        # copie et compile l'indicateur dans ton MT5 (une seule fois)
-python live_mt5.py --lines-only    # exporte les lignes sans trader (utile pour regarder)
-```
-
-Dans MT5 : *Navigateur > Indicateurs > TrendBot > TrendBotLines*, glisse-le sur un graphique.
-Les lignes affichées sont exactement celles que le bot utilise pour décider. Elles se mettent à jour à chaque passage (1 fois par heure).
-
-## Outils de diagnostic
-
-- `python show_specs.py` : lot min / pas / marge / spread de chaque marché chez ton broker.
-- `python show_risk.py 100` : lots et risque en $ de chaque marché pour un capital donné.
+Bilan à tout moment : `python report.py 30` (trades fermés, gain net, taux de réussite, par marché).
+Chaque ordre ouvert est aussi noté dans `trades_log.csv`.
 
 ## Gestion du risque et des lots (`config.py`, `risk.py`)
 
-- Risque par trade : **1 %** du capital (100 $ -> 1 $), calculé à partir de la distance du stop.
-- Lots : `risque en $ / perte par lot au stop`, arrondi **vers le bas** au pas du broker.
-- Si même le **lot minimum** risque plus de **3 %**, le trade est refusé (fréquent sur l'or / forex avec 100 $).
-- **3 positions max** en même temps, **une seule par marché**.
-- **Arrêt du jour** si le capital baisse de 3 % depuis le matin.
-- Pas d'entrée si le signal a plus de 10 min (bot redémarré en retard, etc.).
-- Chaque ordre a un stop-loss dès l'ouverture, pas de take-profit : on sort au stop suiveur.
+- Lots = `risque visé en $ / perte par lot au stop`, arrondi vers le bas au pas du broker. Dépend donc du marché.
+- Risque visé : **1 %** du capital par trade. Si même le lot minimum dépasse **3 %**, le trade est refusé.
+- `CAPITAL_CAP = 100` : le bot raisonne comme si le compte valait 100 $ **+ ses propres gains/pertes** (mets `None` pour utiliser le capital réel).
+- **3 positions max**, une seule par marché. **Arrêt du jour** si le capital baisse de 3 %.
+- **Filtre de spread** : refus si le spread dépasse 0,15 R (15 % de la distance au stop).
+- **Garde-fou de marge** : un trade ne peut pas immobiliser plus de 50 % de la marge libre.
+- Pas d'entrée si la bougie a plus de 15 min (redémarrage tardif).
+- Chaque ordre est validé par `order_check` avant envoi.
 
-## Fichiers
+## Voir les lignes sur les graphiques MT5
+
+```
+python install_indicator.py        # copie et compile l'indicateur dans MT5 (une fois)
+python live_mt5.py --lines-only    # exporte les lignes
+```
+
+MT5 : *Navigateur > Indicateurs > TrendBot > TrendBotLines*, glisse-le sur un graphique.
+Vert = haussière, rouge = baissière ; semaine épais, jour moyen, 4h fin.
+
+## Tests
+
+```
+python test_risk.py                # lots
+python test_bot.py                 # lignes, signaux, stop suiveur, spread, perte du jour, export (données fabriquées)
+python test_demo_lifecycle.py      # RÉEL sur démo uniquement : ouvre 1 lot min avec stop, déplace le stop, ferme
+```
+
+## Outils d'analyse
 
 | Fichier | Rôle |
 |---|---|
-| `live_mt5.py` | le bot (MT5) |
-| `mtf.py` | stratégie : lignes multi-échelles, signal, stop suiveur, backtest |
-| `strategy.py` | pivots, lignes de tendance, statistiques |
-| `risk.py` | calcul des lots |
-| `config.py` | réglages |
-| `data.py`, `run_mtf.py`, `plot_example.py` | données Deriv, backtest, graphique d'exemple |
-| `test_risk.py` | tests du calcul de lots |
+| `show_specs.py`, `list_markets.py` | caractéristiques des marchés chez ton broker |
+| `show_risk.py 100` | lots et risque en $ par marché pour un capital donné |
+| `run_mtf.py`, `scan_spread.py`, `tf_test.py`, `compare_entries.py`, `split_check.py`, `step_m15_test.py` | backtests et comparaisons |
+
+## Ce que les tests ont montré
+
+- H1 tient avec les vrais spreads (≈ +77 R sur 24 marchés en 1 an avec le filtre) ; M15 perd en moyenne (sauf Step Index, mis de côté).
+- L'entrée en deux temps (retour après cassure) est moins bonne que le rebond direct (`entry_mode="reclaim"` reste disponible).
+- Garder seulement les marchés positifs ne marche pas : on garde les 24, le filtre de spread écarte les mauvais coûts.
 
 ## Limites
 
-- Backtest sur 1 an seulement ; coûts réels (spread, commissions) à mesurer en démo.
-- La sélection des marchés actifs (`ACTIVE`) a été faite d'après ce même backtest : biais possible.
+- Backtest sur 1 an : la 1re moitié était proche de zéro, la 2e très positive. Aucun avantage stable n'est prouvé.
+- Avec 100 $, beaucoup de marchés sont refusés (lot minimum trop gros) : Volatility 10/25/50/100, Step Index, l'or.
 - Les bougies jour/semaine de MT5 suivent l'heure du serveur du broker, légèrement différente des données du backtest.
 - L'échelle mensuelle de la vidéo n'est pas implémentée.
