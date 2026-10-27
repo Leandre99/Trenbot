@@ -203,6 +203,14 @@ def look_for_entry(label: str, symbol: str, h1: pd.DataFrame, equity: float, tra
         log.info("%s : signal %s ignoré (stop trop proche du prix)", label, side)
         return False
 
+    # le spread est un coût payé d'entrée : s'il représente une grosse part de la distance au stop, le trade est perdant d'avance
+    spread = tick.ask - tick.bid
+    cost_r = spread / abs(entry - sl)
+    if cost_r > config.MAX_SPREAD_R:
+        log.info("%s : signal %s REFUSÉ : spread %.5f = %.2f R de la distance au stop (max %.2f R)",
+                 label, side, spread, cost_r, config.MAX_SPREAD_R)
+        return False
+
     tv = info.trade_tick_value_loss if info.trade_tick_value_loss > 0 else info.trade_tick_value
     lots = lot_for_risk(equity, config.RISK_PCT, config.MAX_RISK_PCT, entry, sl,
                         info.trade_tick_size, tv, info.volume_min, info.volume_max, info.volume_step)
