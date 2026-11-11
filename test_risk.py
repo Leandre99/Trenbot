@@ -26,6 +26,17 @@ def test_specs_invalides():
     assert r.lots == 0 and r.reason
 
 
+def test_petit_capital_stop_resserre():
+    from risk import min_lot_stop
+    # lot minimum : 0,10 $ par point ; stop prévu 13,2 points ; plancher 5,3 points ; limite 3 %
+    d, risk, pct = min_lot_stop(1000, 3, 13.2, 5.3, 0.10)
+    assert d == 13.2 and abs(risk - 1.32) < 1e-9                     # gros capital : rien ne change
+    d, risk, pct = min_lot_stop(30, 3, 13.2, 5.3, 0.10)
+    assert abs(d - 9.0) < 1e-9 and abs(pct - 3.0) < 1e-9             # 30 $ : stop rapproché pile à 3 %
+    d, risk, pct = min_lot_stop(10, 3, 13.2, 5.3, 0.10)
+    assert d == 5.3 and abs(risk - 0.53) < 1e-9 and pct > 3          # 10 $ : plancher, au-dessus de la limite (signalé)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

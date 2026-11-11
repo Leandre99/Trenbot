@@ -55,3 +55,14 @@ def lot_for_risk(equity: float, risk_pct: float, max_risk_pct: float, entry: flo
     lots = round(lots, decimals)
     risk_money = lots * loss_per_lot
     return LotResult(lots, risk_money, risk_money / equity * 100)
+
+
+def min_lot_stop(equity: float, max_risk_pct: float, dist: float, floor: float, loss_per_min_lot_per_price: float):
+    """Petit capital : on trade le lot MINIMUM et on rapproche le stop pour que la perte au stop tienne dans la limite.
+    dist = distance de stop prévue (prix) ; floor = distance la plus courte acceptée (plancher testé / minimum du broker) ;
+    loss_per_min_lot_per_price = perte du lot minimum pour 1 unité de prix.
+    Retourne (distance retenue, perte au stop, % du capital). Si même le plancher dépasse la limite, on garde le plancher."""
+    cap = equity * max_risk_pct / 100 / loss_per_min_lot_per_price
+    d = min(dist, max(cap, floor))
+    risk = d * loss_per_min_lot_per_price
+    return d, risk, risk / equity * 100

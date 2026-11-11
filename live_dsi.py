@@ -10,7 +10,7 @@ import numpy as np
 
 import config
 from dsi import DSIParams, decide, stop_distance
-from risk import bot_day_halt, lot_for_risk
+from risk import LotResult, bot_day_halt, lot_for_risk, min_lot_stop
 
 log = logging.getLogger("bot")
 LABEL = "Drift Switch 10"
@@ -77,6 +77,16 @@ def open_position(symbol: str, side: int, c: np.ndarray, m: float, thr: float, l
     tv = info.trade_tick_value_loss if info.trade_tick_value_loss > 0 else info.trade_tick_value
     lots = lot_for_risk(equity, config.RISK_PCT, config.MAX_RISK_PCT, entry, sl,
                         info.trade_tick_size, tv, info.volume_min, info.volume_max, info.volume_step)
+    note = ""
+    if lots.reason and config.DSI_ALWAYS_TRADE and equity > 0 and lots.risk_money > 0:
+        # Petit capital : le lot calculé est sous le lot minimum. On prend le lot minimum et on RESSERRE le stop pour que
+        # la perte au stop reste sous la limite, sans descendre sous le plancher testé ni sous le minimum du broker.
+        floor = max(dist / params.stop_mult * config.DSI_STOP_FLOOR, (info.trade_stops_level * info.point + spread) * 1.1)
+        dist, risk, pct = min_lot_stop(equity, config.MAX_RISK_PCT, dist, floor, lots.risk_money / dist)
+        sl = entry - side * dist
+        lots = LotResult(info.volume_min, risk, pct)
+        note = " | petit capital : lot minimum, stop resserré" + (
+            f", risque au-dessus de la limite de {config.MAX_RISK_PCT:g} %" if pct > config.MAX_RISK_PCT + 1e-9 else "")
     if lots.reason:
         log.info("%s : signal %s REFUSÉ : %s", LABEL, sf, lots.reason)
         return False
@@ -86,8 +96,8 @@ def open_position(symbol: str, side: int, c: np.ndarray, m: float, thr: float, l
         log.info("%s : signal %s REFUSÉ : marge requise %s > %d %% de la marge libre (%.2f)", LABEL, sf,
                  f"{margin:.2f}" if margin is not None else "?", config.MAX_MARGIN_PCT, acc.margin_free)
         return False
-    log.info("%s : SIGNAL %s (mouvement %+.3f %% sur %d min, seuil %.3f %%) entrée≈%.2f stop de sécurité=%.2f lots=%s risque max=%.2f (%.1f %%)",
-             LABEL, sf.upper(), m * 100, params.L, thr * 100, entry, sl, lots.lots, lots.risk_money, lots.risk_pct)
+    log.info("%s : SIGNAL %s (mouvement %+.3f %% sur %d min, seuil %.3f %%) entrée~%.2f stop de sécurité=%.2f lots=%s risque max=%.2f (%.1f %%)%s",
+             LABEL, sf.upper(), m * 100, params.L, thr * 100, entry, sl, lots.lots, lots.risk_money, lots.risk_pct, note)
     req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": symbol, "volume": lots.lots, "type": order_type,
            "price": entry, "sl": round(sl, info.digits), "tp": 0.0, "deviation": config.DEVIATION,
            "magic": config.MAGIC, "comment": "trendbot dsi", "type_time": mt5.ORDER_TIME_GTC,
