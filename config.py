@@ -33,6 +33,19 @@ SYMBOLS = {
 # Les marchés dont le lot minimum est trop gros pour ton capital sont refusés automatiquement (et signalés au journal).
 ACTIVE = list(SYMBOLS)
 
+# Stratégie du bot :
+#   "dsi"    = suivi de tendance sur le Drift Switch Index 10 (une décision par minute). C'est la seule stratégie
+#              qui gagne après frais dans les tests (69 jours de données : à confirmer en démo).
+#   "lignes" = ancienne stratégie (rebond sur lignes de tendance, 24 marchés) : PERDANTE sur 16 ans, gardée pour mémoire.
+STRATEGY = "dsi"
+DSI_SYMBOL = "Drift Switch Index 10"
+DSI_L = 20                # minutes du mouvement suivi
+DSI_K = 2.0               # seuil d'entrée (multiples du bruit normal)
+DSI_STOP_MULT = 6.0       # stop de sécurité large, jamais touché dans les tests : la sortie normale est l'inversion du mouvement
+DSI_MIN_SPREAD_PCT = 0.07 # on n'entre QUE si le spread atteint ce % du prix : Deriv élargit le spread pendant les phases de tendance
+                          # (spread serré = phase calme, où suivre le mouvement perd). C'est le signal de phase le plus fiable.
+DSI_MAX_SPREAD_PCT = 0.20 # garde-fou : spread anormal, on n'entre pas
+
 CAPITAL_CAP = None        # None = le bot utilise le VRAI capital du compte (option avancée : un nombre = capital fictif + gains/pertes du bot)
 RISK_PCT = 1.0            # % du capital risqué par trade (100 $ -> 1 $)
 MAX_RISK_PCT = 3.0        # si le lot minimum dépasse ce %, le trade est refusé

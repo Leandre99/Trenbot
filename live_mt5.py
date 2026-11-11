@@ -13,6 +13,7 @@ import ctypes
 import json
 import logging
 import os
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -416,6 +417,14 @@ def main() -> None:
         raise SystemExit("Compte RÉEL détecté : refus de trader. (Option --allow-real si tu assumes, mais teste d'abord en démo.)")
     if not args.trade:
         log.info("MODE ESSAI À BLANC : aucun ordre ne sera envoyé (utilise --trade pour trader sur la démo)")
+
+    if config.STRATEGY == "dsi" and not args.lines_only:      # stratégie Drift Switch : sa propre boucle, à la minute
+        import live_dsi
+        try:
+            live_dsi.run(sys.modules[__name__], args.trade, args.once)
+        finally:
+            mt5.shutdown()
+        return
 
     symbols = resolve_symbols()
     log.info("Marchés suivis : %s", ", ".join(f"{k}={v}" for k, v in symbols.items()))

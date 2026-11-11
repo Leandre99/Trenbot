@@ -172,6 +172,43 @@ def test_stop_suiveur_ne_recule_jamais():
         prev_l, prev_s = sl_long, sl_short
 
 
+# ---------------------------------------------------------------- stratégie Drift Switch
+def _dsi_series(drift_last=0.0, n=400, seed=3):
+    """Prix au hasard (bruit 0,04 % par minute) puis une dérive par minute sur les 20 dernières bougies."""
+    rng = np.random.default_rng(seed)
+    r = rng.normal(0, 0.0004, n)
+    r[-20:] = drift_last
+    return 2650 * np.exp(np.cumsum(r))
+
+
+def test_dsi_entre_dans_le_sens_du_mouvement():
+    from dsi import DSIParams, decide
+    p = DSIParams(L=20, k=2.0, sig_n=300)
+    assert decide(0, _dsi_series(+0.0005), p)[0] == "buy"
+    assert decide(0, _dsi_series(-0.0005), p)[0] == "sell"
+    assert decide(0, _dsi_series(+0.00002), p)[0] is None        # mouvement trop petit : on ne fait rien
+
+
+def test_dsi_sort_quand_le_mouvement_s_inverse():
+    from dsi import DSIParams, decide
+    p = DSIParams(L=20, k=2.0, sig_n=300)
+    assert decide(+1, _dsi_series(+0.0005), p)[0] is None         # l'achat suit la hausse : on garde
+    assert decide(+1, _dsi_series(-0.00002), p)[0] == "close"     # la hausse s'est éteinte : on sort
+    assert decide(+1, _dsi_series(-0.0005), p)[0] == "flip_sell"  # forte baisse : on sort et on vend
+    assert decide(-1, _dsi_series(+0.0005), p)[0] == "flip_buy"
+    assert decide(0, np.full(30, 2650.0), p)[0] is None           # pas assez d'historique
+
+
+def test_dsi_backtest_suit_la_meme_regle_et_ne_gagne_rien_au_hasard():
+    from dsi import DSIParams, backtest
+    rng = np.random.default_rng(11)
+    c = 2650 * np.exp(np.cumsum(rng.normal(0, 0.0004, 60000)))
+    o = np.concatenate(([c[0]], c[:-1]))
+    tr = backtest(o, np.maximum(o, c), np.minimum(o, c), c, DSIParams(L=20, k=2.0, sig_n=500), 0.0)
+    r = np.array([x[3] for x in tr])
+    assert len(r) > 200 and abs(r.mean() / (r.std(ddof=1) / np.sqrt(len(r)))) < 3     # hasard sans spread : ni gain ni perte
+
+
 # ---------------------------------------------------------------- export pour l'indicateur MT5
 def test_export_rows_format():
     import live_mt5

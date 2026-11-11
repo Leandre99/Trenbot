@@ -1,11 +1,21 @@
 # trendbot
 
-Bot MT5 : rebond sur lignes de tendance avec analyse descendante.
-Lignes tracées en **semaine / jour / 4h**, entrée à la clôture de chaque bougie **H1**, achats et ventes,
-stop-loss dès l'ouverture, puis stop suiveur derrière les pivots. Pas de take-profit : on sort au stop.
+Bot MT5 pour Deriv. Stratégie actuelle : **suivi de tendance sur le Drift Switch Index 10** (`config.STRATEGY = "dsi"`).
 
-> **Compte démo uniquement.** Le bot refuse de trader sur un compte réel. Le backtest (1 an) est positif mais
-> inégal selon les marchés et les périodes : le vrai test, ce sont quelques semaines en démo (voir `report.py`).
+Cet indice synthétique alterne des phases de hausse, de baisse et de calme programmées par Deriv. À chaque minute, le bot
+regarde le mouvement des 20 dernières minutes : s'il dépasse 2 fois le bruit normal **et que le spread est large**
+(Deriv élargit le spread pendant les phases de tendance), il entre dans le sens du mouvement. Il sort dès que le mouvement
+s'inverse. Un stop de sécurité large reste chez le broker. Règles : `dsi.py` ; boucle en direct : `live_dsi.py`.
+
+> **Compte démo uniquement.** Le bot refuse de trader sur un compte réel.
+> **Ce que disent les tests** (`python dsi.py`, 69 jours de bougies 1 minute, spread enregistré à chaque minute) :
+> environ 16 trades par jour, +0,033 R par trade, positif sur les deux moitiés, 9 semaines gagnantes sur 11.
+> **L'avantage est mince** : il est divisé par deux si le spread payé est 25 % plus large, et nul à 50 %.
+> 69 jours ne sont pas une preuve : c'est la démo qui tranchera (`python report.py`). Deriv peut aussi modifier son indice.
+
+L'ancienne stratégie (rebond sur lignes de tendance, 24 marchés, `config.STRATEGY = "lignes"`) est **perdante** :
+−0,09 R par trade sur 16 ans et 53 745 trades, négative chaque année de 2011 à 2026 (`research/run_s0.py`).
+Les sections « lignes » ci-dessous la décrivent pour mémoire.
 
 ## Installation (Windows)
 
@@ -24,8 +34,8 @@ Double-clic sur **`lancer_interface.bat`** (ou `python dashboard.py`) : une page
 - **Connexion** : numéro de compte, mot de passe, serveur ; ou « utiliser le compte déjà ouvert dans MT5 ».
   Le **mot de passe n'est jamais enregistré ni journalisé** ; seuls le numéro et le serveur sont mémorisés (`accounts.json`).
 - **Changer de compte / se déconnecter** : menu du compte en haut à droite, ou page Comptes. Impossible tant que le bot tourne.
-- **Tableau de bord** : état du bot, capital du compte, gains, positions ouvertes, et le **journal complet** (filtres signaux / refus / erreurs,
-  recherche ; bouton « Résumé » pour une ligne par événement). Les sens sont écrits **achat** / **vente**.
+- **Tableau de bord** : état du bot, capital du compte et le **journal complet** en direct (filtres signaux / refus / erreurs,
+  recherche). Les sens sont écrits **achat** / **vente**.
   **Démarrer le bot** (confirmation demandée ; un compte réel est refusé) et **Arrêter**.
 - Pages **Bilan** (30 jours, par marché) et **Réglages** : 5 réglages expliqués en une phrase, avec l'exemple en dollars sur ton capital
   (trades en même temps, risque par trade, risque maximum accepté, pause après une mauvaise journée, frais d'entrée maximum ;
@@ -89,9 +99,24 @@ python test_dashboard.py           # tableau de bord : sécurité (jeton, Host),
 | `show_risk.py 100` | lots et risque en $ par marché pour un capital donné |
 | `run_mtf.py`, `scan_spread.py`, `tf_test.py`, `compare_entries.py`, `split_check.py`, `step_m15_test.py` | backtests et comparaisons |
 
-## Ce que les tests ont montré
+## Recherche sur 16 ans (`research/`)
 
-- H1 tient avec les vrais spreads (≈ +77 R sur 24 marchés en 1 an avec le filtre) ; M15 perd en moyenne (sauf Step Index, mis de côté).
+Historique lu dans MT5 (`research/pull_mt5.py`), coûts réels du broker (spread + portage), résultats en R.
+Le moteur est contrôlé sur des prix tirés au hasard (`research/test_engine.py`).
+
+| Stratégie | Résultat après frais |
+|---|---|
+| Lignes de tendance (ancien bot), 21 marchés, 16 ans | −0,09 R par trade, négative chaque année (`run_s0.py`) |
+| Prise de liquidité / retour sur zone (« smart money »), 10 variantes, H1-M30-M15 | négatif sur le forex et l'or, égal au hasard sur les Volatility (`run_s1.py`) |
+| Retour à la moyenne 4 h, forex | −0,02 R par trade (`run_alt.py`) |
+| Suivi de tendance en bougies jour, forex | positif avant 2000, négatif depuis 2015 (`run_alt.py`) |
+| Suivi de tendance 1 minute, Drift Switch Index 10 | **positif** sur 69 jours, avantage mince (`python dsi.py`) |
+
+Non testés : indices boursiers (3 ans d'historique seulement chez Deriv), bitcoin, pétrole.
+
+## Ce que les anciens tests sur 1 an avaient montré (dépassé par la recherche sur 16 ans)
+
+- H1 semblait tenir avec les vrais spreads (≈ +77 R sur 24 marchés en 1 an) : ce résultat ne se retrouve pas sur les bougies du broker.
 - L'entrée en deux temps (retour après cassure) est moins bonne que le rebond direct (`entry_mode="reclaim"` reste disponible).
 - Garder seulement les marchés positifs ne marche pas : on garde les 24, le filtre de spread écarte les mauvais coûts.
 

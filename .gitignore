@@ -10,3 +10,10 @@ state_*.json
 bot_trade.lock
 .env
 *.png
+
+# recherche : donnees telechargees et resultats (volumineux)
+research/data/
+research/out/
+research/__pycache__/
+research/*.log
+research/restore.txt
