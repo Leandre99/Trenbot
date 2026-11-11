@@ -195,7 +195,7 @@ main{flex:1;min-height:0;overflow:auto;padding:20px 30px 24px}
 <!-- ============ APPLICATION ============ -->
 <div class="app hidden" id="app">
   <aside class="side">
-    <div class="brand"><div class="logo"><svg class="ico" style="width:20px;height:20px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg></div><div><b>trendbot</b><small>H1 · 24 marchés</small></div></div>
+    <div class="brand"><div class="logo"><svg class="ico" style="width:20px;height:20px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg></div><div><b>trendbot</b><small id="brandSub">H1 · 24 marchés</small></div></div>
     <nav class="nav" id="nav">
       <button data-v="dash"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Tableau de bord</span></button>
       <button data-v="bilan"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg><span>Bilan</span></button>
@@ -274,6 +274,11 @@ main{flex:1;min-height:0;overflow:auto;padding:20px 30px 24px}
 <div class="veil" id="vOut" role="dialog" aria-modal="true"><div class="card modal"><h3>Se déconnecter ?</h3>
   <p>MetaTrader 5 reste ouvert.</p>
   <div class="btns"><button class="btn" data-close>Annuler</button><button class="btn danger" id="oYes">Se déconnecter</button></div></div></div>
+<div class="veil" id="vQuit" role="dialog" aria-modal="true"><div class="card modal"><h3>Quitter trendbot ?</h3>
+  <p id="qTxt">Le tableau de bord va se fermer.</p>
+  <div class="btns"><button class="btn" data-close>Annuler</button><button class="btn danger" id="qYes">Quitter</button></div></div></div>
+<div class="veil" id="vBye" role="dialog" aria-modal="true"><div class="card modal"><h3>trendbot est arrêté</h3>
+  <p>Tu peux fermer cet onglet. Pour le relancer : double-clic sur <b>lancer_interface.bat</b>.</p></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -284,7 +289,8 @@ let S = null, view = "dash", LOGS = [], lastId = 0, filter = "all", query = "", 
 const TITLES = {dash:"Tableau de bord", bilan:"Bilan", set:"Réglages", acc:"Comptes"};
 const ICO = {eye:'<svg class="ico" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   out:'<svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>',
-  swap:'<svg class="ico" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>'};
+  swap:'<svg class="ico" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>',
+  power:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 11-12.8 0"/></svg>'};
 
 /* ---------- utilitaires ---------- */
 async function api(path, body){
@@ -308,8 +314,9 @@ function go(v){ if(!TITLES[v]) v = "dash"; view = v; location.hash = v;
 $("nav").onclick = e => { const b = e.target.closest("button"); if(b) go(b.dataset.v); };
 document.addEventListener("click", e => {
   if(!e.target.closest("#menu") && !e.target.closest("#acctBtn")) $("menu").classList.add("hidden");
+  if(gone) return;                                  // après « Quitter », le message d'arrêt reste affiché
   if(e.target.closest("[data-close]") || e.target.classList.contains("veil")) document.querySelectorAll(".veil").forEach(v => v.classList.remove("show")); });
-document.addEventListener("keydown", e => { if(e.key === "Escape"){ document.querySelectorAll(".veil").forEach(v => v.classList.remove("show")); $("menu").classList.add("hidden"); } });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !gone){ document.querySelectorAll(".veil").forEach(v => v.classList.remove("show")); $("menu").classList.add("hidden"); } });
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(h && h !== view) go(h); });
 
 /* ---------- thème ---------- */
@@ -375,13 +382,17 @@ function render(s){
   const run = s.bot.running;
   $("acctBtn").innerHTML = `<span class="ava ${a.demo ? "" : "real"}">${esc(initials(a))}</span><span class="t"><b>${esc(a.login)}</b><small>${a.demo ? "Démo" : "RÉEL"} · ${esc(money(a.balance))}</small></span>`;
   $("menu").innerHTML = `<div class="who"><span class="ava ${a.demo ? "" : "real"}">${esc(initials(a))}</span><div><b>${esc(a.name || a.login)}</b><div class="note">${esc(a.login)} · ${esc(a.server)}</div></div></div>
-    <button id="mSwap">${ICO.swap} Changer de compte</button><button id="mOut" class="red">${ICO.out} Se déconnecter</button>`;
+    <button id="mSwap">${ICO.swap} Changer de compte</button><button id="mOut" class="red">${ICO.out} Se déconnecter</button>
+    <button id="mQuit" class="red">${ICO.power} Quitter trendbot</button>`;
   $("mSwap").onclick = () => go("acc"); $("mOut").onclick = () => { $("menu").classList.add("hidden"); $("vOut").classList.add("show"); };
+  $("mQuit").onclick = askQuit;
+  const dsi = s.strategy === "dsi";
+  $("brandSub").textContent = dsi ? "Drift Switch 10 · 1 min" : "H1 · 24 marchés";
   $("botDot").className = "dot" + (run ? " on" : ""); $("botTxt").textContent = run ? "Bot en marche" : "Bot arrêté";
   $("ring").className = "ring" + (run ? " on" : ""); $("stTitle").textContent = run ? "Bot en marche" : "Bot arrêté";
   if(run){ const since = s.bot.started_at ? "Démarré à " + new Date(s.bot.started_at*1000).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) + " · " : "";
     const nx = new Date(); nx.setMinutes(0,5,0); nx.setHours(nx.getHours() + 1); const mins = Math.max(0, Math.round((nx - new Date())/60000));
-    $("stSub").textContent = since + "prochain passage dans ~" + mins + " min";
+    $("stSub").textContent = since + (dsi ? "une décision par minute" : "prochain passage dans ~" + mins + " min");
   } else $("stSub").textContent = a.demo ? "Prêt à démarrer." : "Compte réel détecté : le bot refusera de trader.";
   $("bTrade").disabled = run; $("bStop").disabled = !run;
 
@@ -481,7 +492,7 @@ async function pollLog(){
 }
 
 /* ---------- actions ---------- */
-async function refresh(){ try{ render(await api("/api/status")); }catch(e){} }
+async function refresh(){ if(gone) return; try{ render(await api("/api/status")); }catch(e){} }
 async function pollStatus(){ await refresh(); setTimeout(pollStatus, 3000); }
 async function act(fn, ok){ try{ const j = await fn(); if(j.ok === false) toast(j.error || "Impossible", true); else if(ok) toast(ok); refresh(); }catch(e){ toast(e.message, true); } }
 $("bTrade").onclick = () => $("vTrade").classList.add("show");
@@ -489,6 +500,13 @@ $("tYes").onclick = () => { $("vTrade").classList.remove("show"); act(() => api(
 $("bStop").onclick = () => act(() => api("/api/stop", {}), "Arrêt demandé");
 $("oYes").onclick = async () => { $("vOut").classList.remove("show"); try{ await api("/api/disconnect", {}); toast("Déconnecté"); loginSig = ""; await refresh(); }catch(e){ toast(e.message, true); } };
 $("acctBtn").onclick = e => { e.stopPropagation(); $("menu").classList.toggle("hidden"); };
+let gone = false;
+function askQuit(){ $("menu").classList.add("hidden");
+  $("qTxt").textContent = S && S.bot.running ? "Le bot va s'arrêter et le tableau de bord va se fermer. Une position ouverte garde son stop de sécurité chez le broker."
+                                              : "Le tableau de bord va se fermer. MetaTrader 5 reste ouvert.";
+  $("vQuit").classList.add("show"); }
+$("qYes").onclick = async () => { $("vQuit").classList.remove("show");
+  try{ await api("/api/quit", {}); gone = true; $("vBye").classList.add("show"); }catch(e){ toast(e.message, true); } };
 $("bSave").onclick = async () => { const body = {};
   document.querySelectorAll("#setRows input").forEach(i => { const r = SET.find(x => x.k === i.dataset.k); const v = parseFloat(i.value.replace(",", ".")); body[r.k] = isNaN(v) ? i.value : +(v / r.f).toFixed(4); });
   try{ await api("/api/settings", body); $("setRows").dataset.v = ""; document.activeElement?.blur?.(); toast("Réglages enregistrés"); refresh(); }catch(e){ toast(e.message, true); } };

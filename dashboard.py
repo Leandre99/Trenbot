@@ -1,6 +1,7 @@
 """Tableau de bord web de trendbot : tourne uniquement sur ton PC (http://127.0.0.1:8765).
 
-Lancer : python dashboard.py      (ou double-clic sur lancer_tableau_de_bord.bat)
+Lancer : double-clic sur lancer_interface.bat (sans fenêtre noire), ou python dashboard.py
+Quitter : bouton « Quitter » de la page. Sans bot en marche et sans page ouverte, il se ferme tout seul au bout de 2 min.
 - connexion / déconnexion / changement de compte MT5
 - démarre / arrête le bot (processus à part : fermer la page ne coupe pas tes stop-loss)
 - journal en direct, positions, gains du bot, bilan, réglages
@@ -42,6 +43,9 @@ FIELDS = {  # clé -> (minimum, maximum, entier ?)
 mt5_lock = threading.RLock()                 # un seul thread parle à MT5 à la fois
 session = {"manual_disconnect": False, "last_connect": 0.0}
 poll_now = threading.Event()                 # réveille tout de suite le thread qui interroge MT5
+quit_event = threading.Event()               # demandé par le bouton « Quitter » (ou par l'arrêt automatique)
+activity = {"last_seen": time.time()}        # dernière fois qu'une page ouverte a demandé l'état
+IDLE_QUIT_S = 120                            # sans bot en marche ni page ouverte : on se ferme (sinon MT5 se rouvrirait tout seul)
 
 
 # ------------------------------------------------------------------ le bot (processus à part)
@@ -296,6 +300,7 @@ def status_payload() -> dict:
     s["bot"] = {"running": own or ext is not None,
                 "mode": bot.mode if own else ("trade sur la démo (lancé hors du tableau de bord)" if ext else ""),
                 "started_at": bot.started_at if own else None}
+    s["strategy"] = getattr(config, "STRATEGY", "lignes")
     s["settings"] = {k: getattr(config, k) for k in FIELDS}
     s["sim_capital"] = round((cap + s["bot_pnl"]) if cap else (s["account"] or {}).get("equity", 0), 2)
     s["disconnected"] = session["manual_disconnect"]
@@ -368,6 +373,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized():
             return self._json({"error": "non autorisé"}, 403)
         if u.path == "/api/status":
+            activity["last_seen"] = time.time()
             return self._json(status_payload())
         if u.path == "/api/log":
             after = int(parse_qs(u.query).get("after", ["0"])[0])
@@ -400,6 +406,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": ok, "error": "" if ok else "le bot tourne déjà"})
         if path == "/api/stop":
             return self._json({"ok": bot.stop()})
+        if path == "/api/quit":                 # ferme le tableau de bord (et le bot qu'il a lancé)
+            if bot.own_running():
+                bot.stop()
+            quit_event.set()
+            return self._json({"ok": True})
         if path == "/api/settings":
             try:
                 return self._json({"ok": True, "saved": save_settings(data)})
@@ -441,16 +452,57 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"error": "introuvable"}, 404)
 
 
+class Server(ThreadingHTTPServer):
+    allow_reuse_address = False      # sous Windows, la réutilisation d'adresse laisserait deux programmes prendre le même port
+
+
+def already_running() -> bool:
+    """Un tableau de bord écoute-t-il déjà sur le port ?"""
+    import socket
+    try:
+        socket.create_connection(("127.0.0.1", PORT), timeout=0.5).close()
+        return True
+    except OSError:
+        return False
+
+
+def should_quit(now: float | None = None) -> bool:
+    """Faut-il fermer le tableau de bord ? Oui si on l'a demandé, ou si plus personne ne s'en sert."""
+    if quit_event.is_set():
+        return True
+    now = time.time() if now is None else now
+    return not bot.own_running() and now - activity["last_seen"] > IDLE_QUIT_S
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-browser", action="store_true")
     args = ap.parse_args()
-    threading.Thread(target=poll_mt5, daemon=True).start()
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    if sys.stdout is None or sys.stderr is None:      # lancé sans fenêtre (pythonw) : les messages vont dans un fichier
+        sys.stdout = sys.stderr = open(HERE / "dashboard.log", "a", encoding="utf-8", buffering=1)
     url = f"http://127.0.0.1:{PORT}/"
-    print(f"Tableau de bord : {url}   (Ctrl+C pour quitter : cela arrête aussi le bot, tes stop-loss restent chez le broker)")
+    try:
+        if already_running():
+            raise OSError("déjà lancé")
+        srv = Server(("127.0.0.1", PORT), Handler)
+    except OSError:                                   # déjà lancé : on rouvre simplement sa page
+        print("Le tableau de bord tourne déjà : ouverture de sa page.")
+        if not args.no_browser:
+            webbrowser.open(url)
+        return
+    threading.Thread(target=poll_mt5, daemon=True).start()
+    print(f"Tableau de bord : {url}   (bouton « Quitter » de la page pour tout arrêter ; tes stop-loss restent chez le broker)")
     if not args.no_browser:
         webbrowser.open(url)
+
+    def watchdog():
+        while not should_quit():
+            time.sleep(2)
+        time.sleep(0.5)                               # laisse partir la réponse au bouton « Quitter »
+        srv.shutdown()
+
+    activity["last_seen"] = time.time() + 60          # une minute de marge pour que la page s'ouvre
+    threading.Thread(target=watchdog, daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

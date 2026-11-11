@@ -7,7 +7,8 @@ contrairement aux Volatility. Règle, à la clôture de chaque bougie d'UNE minu
   - en position : on sort dès que le mouvement repasse à zéro ou s'inverse ;
   - on n'entre que si le spread est LARGE : Deriv élargit le spread pendant les phases de tendance et le resserre
     pendant les phases calmes ; spread serré = pas de tendance à suivre (dans les tests, ces entrées-là perdent) ;
-  - un stop de sécurité large reste chez le broker (au cas où le bot ou le PC s'arrête).
+  - un stop de sécurité reste chez le broker (au cas où le bot ou le PC s'arrête) ; il n'a jamais été touché
+    dans les tests, la sortie normale étant l'inversion du mouvement.
 Testé sur 69 jours de bougies 1 minute avec le spread enregistré à chaque minute : `python dsi.py`.
 L'avantage est mince (il disparaît si le spread réellement payé est 50 % plus large que celui enregistré).
 """
@@ -21,7 +22,7 @@ class DSIParams:
     L: int = 20               # minutes du mouvement suivi
     k: float = 2.0            # seuil d'entrée, en multiples du bruit attendu sur L minutes
     sig_n: int = 3000         # minutes utilisées pour mesurer le bruit (≈ 2 jours)
-    stop_mult: float = 6.0    # stop de sécurité = stop_mult x bruit x racine(L)
+    stop_mult: float = 2.5    # stop de sécurité = stop_mult x bruit x racine(L)
 
 
 def noise(c: np.ndarray, n: int) -> float:

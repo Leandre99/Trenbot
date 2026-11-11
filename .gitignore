@@ -17,3 +17,4 @@ research/out/
 research/__pycache__/
 research/*.log
 research/restore.txt
+dashboard.log

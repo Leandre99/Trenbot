@@ -5,11 +5,12 @@ Bot MT5 pour Deriv. Stratégie actuelle : **suivi de tendance sur le Drift Switc
 Cet indice synthétique alterne des phases de hausse, de baisse et de calme programmées par Deriv. À chaque minute, le bot
 regarde le mouvement des 20 dernières minutes : s'il dépasse 2 fois le bruit normal **et que le spread est large**
 (Deriv élargit le spread pendant les phases de tendance), il entre dans le sens du mouvement. Il sort dès que le mouvement
-s'inverse. Un stop de sécurité large reste chez le broker. Règles : `dsi.py` ; boucle en direct : `live_dsi.py`.
+s'inverse. Un stop de sécurité reste chez le broker (jamais touché dans les tests). Règles : `dsi.py` ; boucle en direct : `live_dsi.py`.
 
 > **Compte démo uniquement.** Le bot refuse de trader sur un compte réel.
 > **Ce que disent les tests** (`python dsi.py`, 69 jours de bougies 1 minute, spread enregistré à chaque minute) :
-> environ 16 trades par jour, +0,033 R par trade, positif sur les deux moitiés, 9 semaines gagnantes sur 11.
+> environ 16 trades par jour, +0,08 R par trade (+0,10 $ au lot minimum de 0,1), positif sur les deux moitiés,
+> 9 semaines gagnantes sur 11. Capital minimum : environ 45 $ (en dessous, le lot minimum dépasse 3 % de risque).
 > **L'avantage est mince** : il est divisé par deux si le spread payé est 25 % plus large, et nul à 50 %.
 > 69 jours ne sont pas une preuve : c'est la démo qui tranchera (`python report.py`). Deriv peut aussi modifier son indice.
 
@@ -28,8 +29,12 @@ pip install -r requirements.txt
 
 ## Tableau de bord (le plus simple)
 
-Double-clic sur **`lancer_interface.bat`** (ou `python dashboard.py`) : une page s'ouvre dans ton navigateur
-(`http://127.0.0.1:8765`, uniquement sur ton PC). **Garde la fenêtre noire ouverte** tant que tu l'utilises.
+Double-clic sur **`lancer_interface.bat`** : une page s'ouvre dans ton navigateur (`http://127.0.0.1:8765`, uniquement
+sur ton PC). **Il n'y a pas de fenêtre noire** : le programme tourne en arrière-plan.
+
+- **Pour tout arrêter** : menu du compte (en haut à droite) puis **Quitter trendbot**. Cela arrête aussi le bot.
+- Fermer l'onglet n'arrête pas le bot. Pour retrouver la page, relance `lancer_interface.bat` : il rouvre la page existante.
+- Sans bot en marche et sans page ouverte, le programme se ferme tout seul au bout de 2 minutes.
 
 - **Connexion** : numéro de compte, mot de passe, serveur ; ou « utiliser le compte déjà ouvert dans MT5 ».
   Le **mot de passe n'est jamais enregistré ni journalisé** ; seuls le numéro et le serveur sont mémorisés (`accounts.json`).
@@ -40,7 +45,7 @@ Double-clic sur **`lancer_interface.bat`** (ou `python dashboard.py`) : une page
 - Pages **Bilan** (30 jours, par marché) et **Réglages** : 5 réglages expliqués en une phrase, avec l'exemple en dollars sur ton capital
   (trades en même temps, risque par trade, risque maximum accepté, pause après une mauvaise journée, frais d'entrée maximum ;
   enregistrés dans `settings.json`, pris en compte au prochain démarrage du bot).
-- Thème sombre ou clair (bouton en haut). Le bot tourne dans un processus à part ; quitter le tableau de bord (Ctrl+C) l'arrête,
+- Thème sombre ou clair (bouton en haut). Le bot tourne dans un processus à part ; « Quitter trendbot » l'arrête,
   mais les stop-loss restent chez le broker. Un seul bot qui trade à la fois (détecté automatiquement).
 - Sécurité : écoute seulement sur 127.0.0.1, jeton secret à chaque lancement, en-tête Host vérifié, trading demandé avec confirmation.
 

@@ -63,6 +63,28 @@ def test_statut_et_journal():
     assert json.loads(call("/api/log?after=0")[1])["lines"] is not None
 
 
+def test_quitter_exige_le_jeton_puis_demande_la_fermeture():
+    dashboard.quit_event.clear()
+    assert call("/api/quit", {}, token=None)[0] == 403 and not dashboard.quit_event.is_set()
+    assert call("/api/quit", {}, token="mauvais")[0] == 403 and not dashboard.quit_event.is_set()
+    code, txt = call("/api/quit", {})
+    assert code == 200 and json.loads(txt)["ok"] and dashboard.quit_event.is_set() and dashboard.should_quit()
+    dashboard.quit_event.clear()                      # le serveur de test, lui, continue
+
+
+def test_fermeture_automatique_seulement_si_personne_ne_s_en_sert():
+    dashboard.quit_event.clear()
+    call("/api/status")                               # une page ouverte demande l'état : on reste ouvert
+    assert not dashboard.should_quit()
+    later = time.time() + dashboard.IDLE_QUIT_S + 5
+    assert dashboard.should_quit(later)               # plus de page ni de bot depuis 2 min : on ferme
+    dashboard.bot.own_running = lambda: True          # un bot lancé d'ici tourne : on reste ouvert même sans page
+    try:
+        assert not dashboard.should_quit(later)
+    finally:
+        del dashboard.bot.own_running
+
+
 def test_trader_exige_une_confirmation():
     code, txt = call("/api/start", {"trade": True})
     assert code == 400 and "confirmation" in json.loads(txt)["error"]

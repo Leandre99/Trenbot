@@ -135,7 +135,7 @@ def run(lm, trade: bool, once: bool) -> None:
     if mt5.symbol_info(symbol) is None or not mt5.symbol_select(symbol, True):
         raise SystemExit(f"{symbol} : introuvable chez ce broker (cette stratégie ne marche que sur ce marché de Deriv).")
     log.info("Stratégie : suivi de tendance sur %s (mouvement de %d min, seuil %.1f, entrée seulement en phase de tendance, "
-             "stop de sécurité %.0fx). Une décision par minute.", symbol, params.L, params.k, params.stop_mult)
+             "stop de sécurité %.1fx). Une décision par minute.", symbol, params.L, params.k, params.stop_mult)
     beat: dict = {}
     while True:
         try:

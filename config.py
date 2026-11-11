@@ -41,7 +41,9 @@ STRATEGY = "dsi"
 DSI_SYMBOL = "Drift Switch Index 10"
 DSI_L = 20                # minutes du mouvement suivi
 DSI_K = 2.0               # seuil d'entrée (multiples du bruit normal)
-DSI_STOP_MULT = 6.0       # stop de sécurité large, jamais touché dans les tests : la sortie normale est l'inversion du mouvement
+DSI_STOP_MULT = 2.5       # stop de sécurité (multiples du bruit sur 20 min). La sortie normale est l'inversion du mouvement :
+                          # sur 69 jours ce stop n'a jamais été touché, et le résultat est le même de 2,5x à 6x.
+                          # 2,5x plutôt que 6x pour que le lot minimum (0,1) reste sous 3 % de risque dès ~45 $ de capital.
 DSI_MIN_SPREAD_PCT = 0.07 # on n'entre QUE si le spread atteint ce % du prix : Deriv élargit le spread pendant les phases de tendance
                           # (spread serré = phase calme, où suivre le mouvement perd). C'est le signal de phase le plus fiable.
 DSI_MAX_SPREAD_PCT = 0.20 # garde-fou : spread anormal, on n'entre pas
