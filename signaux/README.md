@@ -1,7 +1,9 @@
 # Bot de signaux (sans MT5, sans ton PC)
 
-> **Le plus simple : Cloudflare** (gratuit, sans carte bancaire) : voir [`cloudflare/README.md`](cloudflare/README.md).
-> La suite de ce fichier décrit la version Python (Oracle Cloud ou ton PC).
+> **En service : GitHub Actions** (`.github/workflows/signaux.yml`, toutes les 5 min, dépôt public = gratuit).
+> Secrets du dépôt : `TELEGRAM_TOKEN` et `TELEGRAM_CHAT_ID` (Settings → Secrets and variables → Actions).
+> Essai : Actions → signaux → Run workflow → cocher « Envoyer seulement un message d'essai ».
+> (La version Cloudflare, `cloudflare/`, est refusée par Deriv : code 429.)
 
 Il **ne prend aucune position**. Il surveille les marchés et t'envoie une **notification sur ton téléphone** quand
 ta stratégie donne un signal. C'est toi qui décides de trader.

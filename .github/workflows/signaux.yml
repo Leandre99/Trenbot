@@ -1,0 +1,62 @@
+# Lance le bot de signaux (dossier signaux/) toutes les 5 minutes sur les serveurs de GitHub (gratuit pour un dépôt public).
+# Secrets à créer (Settings > Secrets and variables > Actions) : TELEGRAM_TOKEN et TELEGRAM_CHAT_ID.
+name: signaux
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"          # toutes les 5 min (GitHub peut décaler de quelques minutes)
+  workflow_dispatch:
+    inputs:
+      essai:
+        description: "Envoyer seulement un message d'essai sur Telegram"
+        type: boolean
+        default: false
+
+concurrency:
+  group: signaux                    # jamais deux passages en même temps
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  passage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: signaux
+    env:
+      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: signaux/requirements.txt
+      - run: pip install -r requirements.txt
+
+      - name: Message d'essai
+        if: ${{ inputs.essai }}
+        run: python signaux.py --test
+
+      - name: Mémoire du bot (bougies déjà vues, signaux déjà envoyés)
+        if: ${{ !inputs.essai }}
+        uses: actions/cache/restore@v4
+        with:
+          path: signaux/etat.json
+          key: etat-${{ github.run_id }}
+          restore-keys: etat-
+
+      - name: Passage
+        if: ${{ !inputs.essai }}
+        run: python signaux.py --passage
+
+      - name: Sauvegarde de la mémoire
+        if: ${{ !inputs.essai && always() && hashFiles('signaux/etat.json') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: signaux/etat.json
+          key: etat-${{ github.run_id }}

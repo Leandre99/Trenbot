@@ -12,6 +12,7 @@ Réglages : config.json (créé au premier lancement, à côté de ce fichier).
 
     python signaux.py               # tourne en continu
     python signaux.py --once        # un seul passage (affiche ce qu'il voit)
+    python signaux.py --passage     # un passage avec mémoire (GitHub Actions)
     python signaux.py --test        # envoie une notification d'essai sur ton téléphone
     python signaux.py --telegram    # branche Telegram (jeton de @BotFather)
     python signaux.py --sans-notif  # n'envoie rien, affiche seulement
@@ -20,6 +21,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import secrets
 import sys
 import time
@@ -74,6 +76,9 @@ def load_config() -> dict:
     if bad:
         raise SystemExit(f"Unité(s) de temps inconnue(s) dans config.json : {bad}. Choix : {list(GRAN)}")
     CONFIG.write_text(json.dumps(cfg, indent=1, ensure_ascii=False), encoding="utf-8")
+    for key in ("TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID"):      # secrets fournis par GitHub Actions : jamais écrits sur disque
+        if os.environ.get(key):
+            cfg[key.lower()] = os.environ[key].strip()
     return cfg
 
 
@@ -234,7 +239,10 @@ def due_units(cfg: dict, st: dict, now: float) -> list[str]:
     return due
 
 
-def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, now: float | None = None) -> list:
+def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, now: float | None = None,
+             first_silent: bool = False) -> list:
+    """first_silent : la toute première fois qu'une unité est vue, on la note sans envoyer
+    (évite d'envoyer un vieux signal H4 au premier lancement)."""
     now = time.time() if now is None else now
     units = due_units(cfg, st, now) if units is None else units
     if not units:
@@ -246,6 +254,9 @@ def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, no
     for tf in units:
         g = GRAN[tf]
         last_open = (int(now) // g) * g - g
+        if first_silent and tf not in st.get("vu", {}):
+            st.setdefault("vu", {})[tf] = last_open
+            continue
         for name, code in cfg["marches"].items():
             df = candles(data.get((code, g), []), g, now)
             if df.empty:
@@ -274,6 +285,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true", help="un seul passage sur toutes les unités")
     ap.add_argument("--test", action="store_true", help="envoie une notification d'essai")
+    ap.add_argument("--passage", action="store_true", help="un passage avec mémoire (pour GitHub Actions, lancé toutes les 5 min)")
     ap.add_argument("--telegram", action="store_true", help="branche Telegram (jeton de @BotFather)")
     ap.add_argument("--sans-notif", action="store_true", help="n'envoie rien, affiche seulement")
     args = ap.parse_args()
@@ -294,6 +306,11 @@ def main() -> None:
         log.info("notification d'essai : %s", "envoyée" if ok else "ÉCHEC")
         return
     st = load_state()
+    if args.passage:
+        found = run_once(cfg, st, not args.sans_notif, first_silent=True)
+        save_state(st)
+        log.info("passage terminé : %d signal(aux) | bougies vues : %s", len(found), st.get("vu"))
+        return
     if args.once:
         found = run_once(cfg, {}, not args.sans_notif, units=cfg["unites"])
         log.info("passage terminé : %d signal(aux)", len(found))

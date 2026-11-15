@@ -82,6 +82,23 @@ def test_telegram_prioritaire_et_jeton_masque():
     assert s.notify(dict(P, ntfy_canal="x"), "t", "m", False) and sent["body"]["topic"] == "x"   # sans Telegram : ntfy
 
 
+def test_premier_passage_silencieux_et_secrets_par_variables():
+    import os
+    st = {}
+    calls = []
+    s._fetch_all = lambda reqs: calls.append(reqs) or {}
+    s.asyncio.run = lambda x: x                      # _fetch_all remplacé : pas de réseau
+    found = s.run_once(dict(P), st, send=False, now=10 * 3600 + 30, first_silent=True)
+    assert found == [] and set(st["vu"]) == set(P["unites"])       # première fois : noté, rien envoyé
+    os.environ["TELEGRAM_TOKEN"], os.environ["TELEGRAM_CHAT_ID"] = "1:X", "7"
+    try:
+        cfg = s.load_config()
+        assert cfg["telegram_token"] == "1:X" and cfg["telegram_chat_id"] == "7"
+        assert "1:X" not in s.CONFIG.read_text(encoding="utf-8")   # le secret n'est jamais écrit sur disque
+    finally:
+        del os.environ["TELEGRAM_TOKEN"], os.environ["TELEGRAM_CHAT_ID"]
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):
