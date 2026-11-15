@@ -1,7 +1,8 @@
 # Bot de signaux sur Cloudflare (gratuit, sans carte, PC éteint)
 
 Cloudflare réveille le bot **chaque minute**. Il regarde les bougies qui viennent de se fermer (M15 une minute après
-chaque quart d'heure, H1 deux minutes après l'heure, H4 trois minutes après 0 h, 4 h, 8 h… UTC) et t'envoie un
+chaque quart d'heure, M30 deux minutes après chaque demi-heure, H1 trois minutes après l'heure, H4 quatre
+minutes après 0 h, 4 h, 8 h… UTC) et t'envoie un
 message **Telegram** si ta stratégie donne un signal. Il ne prend aucune position.
 
 Le code à coller est `worker.js` (les marchés, les unités de temps et les réglages sont en haut du fichier).

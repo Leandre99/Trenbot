@@ -29,7 +29,7 @@ const REGLAGES = {
     "Step Index": "stpRNG",
   },
   // absents de l'API publique de Deriv : CAD/CHF, CAD/JPY, CHF/JPY, Volatility 150 (1s)
-  unites: ["M15", "H1", "H4"],           // au choix : M5 M15 M30 H1 H4 D1
+  unites: ["M15", "M30", "H1", "H4"],    // au choix : M5 M15 M30 H1 H4 D1
   mm_rapide: 8, mm_moyenne: 21, mm_lente: 50,
   rsi_periode: 14, rsi_bas: 30, rsi_haut: 70,
   rsi_memoire: 20,                       // la survente / le surachat doit dater de moins de N bougies
@@ -38,8 +38,9 @@ const REGLAGES = {
 };
 
 const GRAN = { M5: 300, M15: 900, M30: 1800, H1: 3600, H4: 14400, D1: 86400 };
-// minutes d'attente après la clôture : laisse Deriv finaliser la bougie et étale le travail sur plusieurs minutes
-const DELAI = { M5: 1, M15: 1, M30: 2, H1: 2, H4: 3, D1: 4 };
+// minutes d'attente après la clôture : laisse Deriv finaliser la bougie, et une seule unité par minute
+// (M15 à :01 :16 :31 :46, M30 à :02 :32, H1 à :03, H4 à :04, D1 à 00:05) pour rester dans les limites gratuites
+const DELAI = { M5: 1, M15: 1, M30: 2, H1: 3, H4: 4, D1: 5 };
 const NB_BOUGIES = 150;
 const DERIV = "api.derivws.com/trading/v1/options/ws/public";
 
