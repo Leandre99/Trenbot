@@ -40,8 +40,15 @@ log = logging.getLogger("signaux")
 DEFAULT = {
     # nom affiché -> code Deriv
     "marches": {"EUR/USD": "frxEURUSD", "GBP/USD": "frxGBPUSD", "USD/JPY": "frxUSDJPY", "USD/CHF": "frxUSDCHF",
-                "USD/CAD": "frxUSDCAD", "AUD/USD": "frxAUDUSD", "NZD/USD": "frxNZDUSD", "Or": "frxXAUUSD",
-                "Volatility 75": "R_75", "Volatility 100": "R_100", "Step Index": "stpRNG"},
+                "USD/CAD": "frxUSDCAD", "AUD/USD": "frxAUDUSD", "AUD/CAD": "frxAUDCAD", "AUD/CHF": "frxAUDCHF",
+                "AUD/JPY": "frxAUDJPY", "EUR/AUD": "frxEURAUD", "EUR/CAD": "frxEURCAD", "EUR/CHF": "frxEURCHF",
+                "EUR/GBP": "frxEURGBP", "EUR/JPY": "frxEURJPY", "GBP/AUD": "frxGBPAUD", "GBP/JPY": "frxGBPJPY",
+                "GBP/CHF": "frxGBPCHF", "Or": "frxXAUUSD",
+                "Volatility 10": "R_10", "Volatility 25": "R_25", "Volatility 50": "R_50", "Volatility 75": "R_75",
+                "Volatility 10 (1s)": "1HZ10V", "Volatility 15 (1s)": "1HZ15V", "Volatility 25 (1s)": "1HZ25V",
+                "Volatility 50 (1s)": "1HZ50V", "Volatility 75 (1s)": "1HZ75V", "Volatility 100 (1s)": "1HZ100V",
+                "Step Index": "stpRNG"},
+    # absents de l'API publique de Deriv : CAD/CHF, CAD/JPY, CHF/JPY, Volatility 150 (1s)
     "unites": ["M15", "H1", "H4"],          # au choix : M1 M5 M15 M30 H1 H4 D1
     "ntfy_serveur": "https://ntfy.sh",
     "ntfy_canal": "",                        # créé au hasard au premier lancement : c'est ton canal privé
