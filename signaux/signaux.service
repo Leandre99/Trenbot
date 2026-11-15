@@ -1,0 +1,14 @@
+[Unit]
+Description=Bot de signaux trendbot (notifications ntfy)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Trenbot/signaux
+ExecStart=/usr/bin/python3 signaux.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

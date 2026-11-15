@@ -1,5 +1,8 @@
 # trendbot
 
+> **Nouveau : bot de signaux** (MM 8/21/50 + RSI 14, notifications sur le téléphone, sans MT5 ni PC allumé) :
+> voir [`signaux/README.md`](signaux/README.md).
+
 Bot MT5 pour Deriv. Stratégie actuelle : **suivi de tendance sur le Drift Switch Index 10** (`config.STRATEGY = "dsi"`).
 
 Cet indice synthétique alterne des phases de hausse, de baisse et de calme programmées par Deriv. À chaque minute, le bot

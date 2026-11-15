@@ -1,0 +1,87 @@
+"""Tests du bot de signaux (données fabriquées, rien n'est envoyé). python test_signaux.py"""
+import numpy as np
+import pandas as pd
+
+import signaux as s
+
+P = dict(s.DEFAULT)
+
+
+def frame(close: np.ndarray) -> pd.DataFrame:
+    o = np.concatenate(([close[0]], close[:-1]))
+    return pd.DataFrame({"epoch": np.arange(len(close)) * 3600, "open": o, "high": np.maximum(o, close) + 0.05,
+                         "low": np.minimum(o, close) - 0.05, "close": close})
+
+
+def path_down_then_up(n_up: int) -> np.ndarray:
+    """Baisse (le RSI passe en survente) puis remontée progressive."""
+    down = np.linspace(110, 100, 60)
+    up = 100 + np.cumsum(np.full(n_up, 0.6))
+    return np.concatenate((np.full(40, 110.0), down, up))
+
+
+def first_signal(close: np.ndarray):
+    """Rejoue bougie par bougie comme en direct : premier signal et sa position."""
+    for i in range(80, len(close) + 1):
+        sig = s.detect(frame(close[:i]), P)
+        if sig:
+            return i, sig
+    return None, None
+
+
+def test_achat_apres_survente_et_croisements():
+    i, sig = first_signal(path_down_then_up(60))
+    assert sig is not None and sig["sens"] == "ACHAT"
+    assert sig["stop"] < sig["prix"] < sig["objectif"]
+    assert abs((sig["objectif"] - sig["prix"]) - 2 * (sig["prix"] - sig["stop"])) < 1e-9
+
+
+def test_vente_symetrique():
+    i, sig = first_signal(220 - path_down_then_up(60))
+    assert sig is not None and sig["sens"] == "VENTE" and sig["objectif"] < sig["prix"] < sig["stop"]
+
+
+def test_un_seul_signal_par_mouvement():
+    close = path_down_then_up(60)
+    hits = [i for i in range(80, len(close) + 1) if s.detect(frame(close[:i]), P)]
+    assert len(hits) == 1                                  # l'alignement ne se « forme » qu'une fois
+
+
+def test_pas_de_signal_sans_survente():
+    close = np.concatenate((np.full(60, 100.0), 100 + np.cumsum(np.full(80, 0.05))))   # hausse douce, RSI jamais < 30
+    assert first_signal(close)[1] is None
+
+
+def test_bougie_en_cours_ignoree():
+    raw = [{"epoch": e, "open": 1, "high": 1, "low": 1, "close": 1} for e in (0, 3600, 7200)]
+    assert len(s.candles(raw, 3600, now=7200 + 100)) == 2        # la bougie de 7200 n'est pas terminée
+    assert len(s.candles(raw, 3600, now=10800)) == 3
+
+
+def test_unites_a_traiter():
+    cfg = {"unites": ["M15", "H1"]}
+    now = 10 * 3600 + 30
+    assert s.due_units(cfg, {}, now) == ["M15", "H1"]
+    st = {"vu": {"M15": 10 * 3600 - 900, "H1": 9 * 3600}}
+    assert s.due_units(cfg, st, now) == []
+    assert s.due_units(cfg, st, now + 900) == ["M15"]           # 15 min plus tard : seulement M15
+
+
+def test_message_lisible():
+    t, m = s.message("EUR/USD", "H1", {"sens": "ACHAT", "prix": 1.11654, "stop": 1.1141, "objectif": 1.12142,
+                                        "rsi": 61.2, "epoch": 0})
+    assert t == "ACHAT EUR/USD (H1)" and "Stop proposé : 1.11410" in m and "Objectif proposé : 1.12142" in m
+
+
+if __name__ == "__main__":
+    failed = 0
+    for name, fn in list(globals().items()):
+        if name.startswith("test_"):
+            try:
+                fn()
+                print("OK   ", name)
+            except Exception as e:  # noqa: BLE001
+                failed += 1
+                print("ÉCHEC", name, "->", repr(e)[:200])
+    print(f"\n{'TOUS LES TESTS PASSENT' if not failed else str(failed) + ' TEST(S) EN ÉCHEC'}")
+    raise SystemExit(1 if failed else 0)
