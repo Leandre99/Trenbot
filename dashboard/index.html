@@ -328,7 +328,7 @@ $("theme").onclick = () => setTheme(document.documentElement.dataset.theme === "
 function connectForm(id, profiles){
   const servers = [...new Set(["Deriv-Demo","Deriv-Server","Deriv-Server-02", ...profiles.map(p => p.server)])];
   return `<div class="err hidden" id="${id}Err"></div>
-    <div class="field"><label for="${id}L">Numéro de compte</label><input class="inp" id="${id}L" inputmode="numeric" autocomplete="username" placeholder="ex. 40915110"></div>
+    <div class="field"><label for="${id}L">Numéro de compte</label><input class="inp" id="${id}L" inputmode="numeric" autocomplete="username" placeholder="ex. 12345678"></div>
     <div class="field"><label for="${id}P">Mot de passe</label><div class="pw"><input class="inp" id="${id}P" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" id="${id}Eye" aria-label="Afficher le mot de passe">${ICO.eye}</button></div></div>
     <div class="field"><label for="${id}S">Serveur</label><input class="inp" id="${id}S" list="${id}SL" value="${esc(profiles[0]?.server || "Deriv-Demo")}" autocomplete="off"><datalist id="${id}SL">${servers.map(s => `<option value="${esc(s)}">`).join("")}</datalist></div>
     <button class="btn primary block" id="${id}Go" type="button">Se connecter</button>
