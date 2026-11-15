@@ -1,0 +1,8 @@
+// Configuration Cloudflare : utilisée quand le worker est déployé depuis GitHub (dossier signaux/cloudflare)
+{
+  "name": "signaux",
+  "main": "worker.js",
+  "compatibility_date": "2025-01-01",
+  "triggers": { "crons": ["* * * * *"] },   // réveil chaque minute
+  "observability": { "enabled": true }      // journal visible dans le tableau de bord Cloudflare
+}
