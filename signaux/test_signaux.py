@@ -73,6 +73,15 @@ def test_message_lisible():
     assert t == "ACHAT EUR/USD (H1)" and "Stop proposé : 1.11410" in m and "Objectif proposé : 1.12142" in m
 
 
+def test_telegram_prioritaire_et_jeton_masque():
+    sent = {}
+    s._post_json = lambda url, body: sent.update(url=url, body=body) or True
+    cfg = dict(P, telegram_token="123:ABC", telegram_chat_id="42", ntfy_canal="x")
+    assert s.notify(cfg, "ACHAT EUR/USD (H1)", "Prix : 1", True)
+    assert sent["url"].startswith("https://api.telegram.org/bot123:ABC/sendMessage") and sent["body"]["chat_id"] == "42"
+    assert s.notify(dict(P, ntfy_canal="x"), "t", "m", False) and sent["body"]["topic"] == "x"   # sans Telegram : ntfy
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in list(globals().items()):

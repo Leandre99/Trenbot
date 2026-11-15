@@ -9,13 +9,20 @@ ta stratégie donne un signal. C'est toi qui décides de trader.
 - **Vente** : l'inverse (RSI au-dessus de 70, MM8 sous la MM21, les deux sous la MM50, prix sous la MM50).
 - La notification propose un **stop** (plus bas / plus haut des 10 dernières bougies) et un **objectif** (2 fois le risque).
 
-Données : API publique de Deriv (aucun compte, aucun mot de passe). Notifications : application gratuite **ntfy**.
+Données : API publique de Deriv (aucun compte, aucun mot de passe). Notifications : **Telegram** (ou l'application gratuite ntfy).
 
-## 1. Sur ton téléphone
+## 1. Sur ton téléphone : Telegram
 
-1. Installe **ntfy** (Play Store, gratuit, sans compte).
-2. Ouvre-la, appuie sur **+**, et tape le nom du canal affiché par le bot au démarrage (`signaux-xxxxxxxxxxxx`).
-   Serveur : laisse `ntfy.sh`.
+1. Dans Telegram, cherche **@BotFather**, appuie sur **Démarrer**, puis envoie `/newbot`.
+2. Donne-lui un nom (ex. `Mes signaux`) puis un identifiant finissant par `bot` (ex. `mes_signaux_123_bot`).
+3. BotFather te répond avec un **jeton** du type `123456789:AAH...`. **Ne le partage avec personne** : il donne le
+   contrôle de ton bot.
+4. Ouvre ton nouveau bot (lien donné par BotFather) et appuie sur **Démarrer**.
+5. Sur la machine où tourne le bot de signaux : `python3 signaux.py --telegram`, colle le jeton. Il trouve ta
+   discussion tout seul, l'enregistre dans `config.json` (jamais envoyé sur GitHub) et t'envoie un message d'essai.
+
+Sans Telegram, le bot utilise **ntfy** (application gratuite, sans compte) : abonne-toi au canal `signaux-xxxx`
+affiché au démarrage.
 
 ## 2. Réglages (`config.json`, créé au premier lancement)
 
@@ -46,10 +53,10 @@ Après une modification, redémarre le bot (`sudo systemctl restart signaux` sur
    git clone https://github.com/Leandre99/Trenbot.git
    cd Trenbot/signaux
    pip3 install --break-system-packages -r requirements.txt
-   python3 signaux.py --test
+   python3 signaux.py --telegram
    ```
    (Si le dépôt est privé, GitHub demande ton identifiant et un *jeton d'accès* à la place du mot de passe.)
-   `--test` affiche le nom de ton canal et envoie une notification d'essai : abonne-toi à ce canal dans ntfy.
+   `--telegram` te demande le jeton de @BotFather et t'envoie un message d'essai sur Telegram.
 5. Pour qu'il tourne en permanence (et redémarre tout seul) :
    ```
    sudo cp signaux.service /etc/systemd/system/

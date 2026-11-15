@@ -1,5 +1,5 @@
 """Bot de SIGNAUX : il ne prend aucune position. Il surveille les marchés et t'envoie une notification sur ton
-téléphone (application gratuite ntfy) quand ta stratégie donne un signal. C'est toi qui décides de trader.
+téléphone (Telegram, ou l'application gratuite ntfy) quand ta stratégie donne un signal. C'est toi qui décides de trader.
 
 Stratégie (à la clôture de chaque bougie, sur chaque marché et chaque unité de temps choisis) :
   ACHAT : le RSI 14 est passé sous 30 (survente) dans les dernières bougies, puis la MM8 passe au-dessus de la MM21,
@@ -13,6 +13,7 @@ Réglages : config.json (créé au premier lancement, à côté de ce fichier).
     python signaux.py               # tourne en continu
     python signaux.py --once        # un seul passage (affiche ce qu'il voit)
     python signaux.py --test        # envoie une notification d'essai sur ton téléphone
+    python signaux.py --telegram    # branche Telegram (jeton de @BotFather)
     python signaux.py --sans-notif  # n'envoie rien, affiche seulement
 """
 import argparse
@@ -50,6 +51,8 @@ DEFAULT = {
                 "Step Index": "stpRNG"},
     # absents de l'API publique de Deriv : CAD/CHF, CAD/JPY, CHF/JPY, Volatility 150 (1s)
     "unites": ["M15", "H1", "H4"],          # au choix : M1 M5 M15 M30 H1 H4 D1
+    "telegram_token": "",                    # jeton donné par @BotFather (reste sur ta machine, jamais sur GitHub)
+    "telegram_chat_id": "",                  # rempli tout seul par : python signaux.py --telegram
     "ntfy_serveur": "https://ntfy.sh",
     "ntfy_canal": "",                        # créé au hasard au premier lancement : c'est ton canal privé
     "mm_rapide": 8, "mm_moyenne": 21, "mm_lente": 50,
@@ -166,17 +169,57 @@ def message(name: str, tf: str, sig: dict) -> tuple[str, str]:
 
 
 # ------------------------------------------------------------------ notification
-def notify(cfg: dict, title: str, text: str, buy: bool | None = None) -> bool:
-    body = {"topic": cfg["ntfy_canal"], "title": title, "message": text, "priority": 4,
-            "tags": ["chart_with_upwards_trend" if buy else "chart_with_downwards_trend"] if buy is not None else ["bell"]}
-    req = urllib.request.Request(cfg["ntfy_serveur"].rstrip("/"), data=json.dumps(body).encode("utf-8"),
+def _post_json(url: str, body: dict) -> bool:
+    req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"),
                                  headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
             return r.status == 200
     except Exception as e:  # noqa: BLE001
-        log.error("notification non envoyée : %r", e)
+        log.error("notification non envoyée : %s", str(e).replace(cfg_token(), "***"))
         return False
+
+
+_TOKEN = {"v": ""}          # jeton Telegram, masqué dans les messages d'erreur
+
+
+def cfg_token() -> str:
+    return _TOKEN["v"] or "<aucun>"
+
+
+def notify(cfg: dict, title: str, text: str, buy: bool | None = None) -> bool:
+    """Telegram si configuré, sinon ntfy."""
+    if cfg.get("telegram_token") and cfg.get("telegram_chat_id"):
+        _TOKEN["v"] = cfg["telegram_token"]
+        icon = "🟢" if buy else "🔴" if buy is not None else "🔔"
+        return _post_json(f"https://api.telegram.org/bot{cfg['telegram_token']}/sendMessage",
+                          {"chat_id": cfg["telegram_chat_id"], "text": f"{icon} {title}\n{text}"})
+    return _notify_ntfy(cfg, title, text, buy)
+
+
+def telegram_setup(cfg: dict) -> None:
+    """Trouve l'identifiant de ta discussion avec ton bot (envoie-lui d'abord un message) et l'enregistre."""
+    tok = cfg.get("telegram_token", "").strip()
+    if not tok:
+        tok = input("Colle le jeton donné par @BotFather : ").strip()
+    try:
+        with urllib.request.urlopen(f"https://api.telegram.org/bot{tok}/getUpdates", timeout=20) as r:
+            upd = json.loads(r.read().decode("utf-8"))
+    except Exception:  # noqa: BLE001
+        raise SystemExit("Jeton refusé par Telegram : vérifie-le (copie-colle exacte depuis @BotFather).")
+    chats = [u[k]["chat"]["id"] for u in upd.get("result", []) for k in ("message", "edited_message") if k in u]
+    if not chats:
+        raise SystemExit("Aucun message reçu : ouvre ton bot dans Telegram, appuie sur Démarrer (ou écris « salut »), puis relance.")
+    cfg["telegram_token"], cfg["telegram_chat_id"] = tok, str(chats[-1])
+    CONFIG.write_text(json.dumps(cfg, indent=1, ensure_ascii=False), encoding="utf-8")
+    ok = notify(cfg, "Essai trendbot", "Telegram est branché : les signaux arriveront ici.")
+    print("Telegram branché, message d'essai :", "envoyé" if ok else "ÉCHEC")
+
+
+def _notify_ntfy(cfg: dict, title: str, text: str, buy: bool | None = None) -> bool:
+    body = {"topic": cfg["ntfy_canal"], "title": title, "message": text, "priority": 4,
+            "tags": ["chart_with_upwards_trend" if buy else "chart_with_downwards_trend"] if buy is not None else ["bell"]}
+    return _post_json(cfg["ntfy_serveur"].rstrip("/"), body)
 
 
 # ------------------------------------------------------------------ un passage
@@ -231,13 +274,20 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true", help="un seul passage sur toutes les unités")
     ap.add_argument("--test", action="store_true", help="envoie une notification d'essai")
+    ap.add_argument("--telegram", action="store_true", help="branche Telegram (jeton de @BotFather)")
     ap.add_argument("--sans-notif", action="store_true", help="n'envoie rien, affiche seulement")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         handlers=[logging.StreamHandler(sys.stdout),
                                   logging.FileHandler(HERE / "signaux.log", encoding="utf-8")])
     cfg = load_config()
-    log.info("Canal ntfy : %s  (abonne-toi à ce nom dans l'application ntfy)", cfg["ntfy_canal"])
+    if args.telegram:
+        telegram_setup(cfg)
+        return
+    if cfg.get("telegram_token") and cfg.get("telegram_chat_id"):
+        log.info("Notifications : Telegram")
+    else:
+        log.info("Notifications : ntfy, canal %s  (abonne-toi à ce nom dans l'application ntfy)", cfg["ntfy_canal"])
     log.info("Marchés : %s | unités : %s", ", ".join(cfg["marches"]), ", ".join(cfg["unites"]))
     if args.test:
         ok = notify(cfg, "Essai trendbot", "Si tu lis ceci, les signaux arriveront bien sur ton téléphone.")
