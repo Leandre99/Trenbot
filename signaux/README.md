@@ -3,7 +3,9 @@
 > **En service : GitHub Actions** (`.github/workflows/signaux.yml`, toutes les 5 min, dépôt public = gratuit).
 > Secrets du dépôt : `TELEGRAM_TOKEN` et `TELEGRAM_CHAT_ID` (Settings → Secrets and variables → Actions).
 > Essai : Actions → signaux → Run workflow → cocher « Envoyer seulement un message d'essai ».
-> (La version Cloudflare, `cloudflare/`, est refusée par Deriv : code 429.)
+> GitHub lance ses passages programmés très irrégulièrement (2 en 11 h le premier soir) : le worker Cloudflare
+> (`cloudflare/worker.js`) sert d'horloge et demande un passage à GitHub à :01 :16 :31 :46. Secret Cloudflare :
+> `GITHUB_TOKEN` (jeton GitHub fine-grained, dépôt Trenbot, droit « Actions : Read and write »).
 
 Il **ne prend aucune position**. Il surveille les marchés et t'envoie une **notification sur ton téléphone** quand
 ta stratégie donne un signal. C'est toi qui décides de trader.

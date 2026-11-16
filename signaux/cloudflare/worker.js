@@ -185,9 +185,35 @@ export async function runOnce(env, nowSec, send = true) {
   return found;
 }
 
+// ------------------------------------------------------------------ réveil de GitHub
+// Deriv refuse les serveurs de Cloudflare (429), et GitHub lance ses passages programmés très irrégulièrement.
+// Solution : Cloudflare sert d'horloge fiable et demande à GitHub un passage 1 minute après chaque quart d'heure
+// (:01 :16 :31 :46), c'est-à-dire juste après la clôture des bougies M15, M30, H1 et H4.
+// Secret nécessaire : GITHUB_TOKEN (jeton GitHub « fine-grained », droit Actions en écriture sur le dépôt Trenbot).
+const GITHUB_WORKFLOW = "https://api.github.com/repos/Leandre99/Trenbot/actions/workflows/signaux.yml/dispatches";
+
+export function githubDue(nowSec) {
+  return Math.floor(nowSec / 60) % 15 === 1;
+}
+
+export async function wakeGithub(env) {
+  const r = await fetch(GITHUB_WORKFLOW, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: "application/vnd.github+json",
+               "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "signaux-trendbot", "Content-Type": "application/json" },
+    body: JSON.stringify({ ref: "main" }) });
+  if (r.status !== 204) throw new Error(`GitHub a refusé le lancement (${r.status}) ${(await r.text()).slice(0, 200)}`);
+  console.log("passage GitHub demandé");
+}
+
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runOnce(env, Math.floor(event.scheduledTime / 1000)));
+    const now = Math.floor(event.scheduledTime / 1000);
+    if (env.GITHUB_TOKEN) {
+      if (githubDue(now)) ctx.waitUntil(wakeGithub(env));
+      return;
+    }
+    ctx.waitUntil(runOnce(env, now));                 // ancien mode (bloqué par Deriv depuis Cloudflare)
   },
   async fetch(request, env) {
     const url = new URL(request.url);

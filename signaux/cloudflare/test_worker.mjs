@@ -1,6 +1,6 @@
 // Vérifie que la version Cloudflare donne EXACTEMENT les mêmes signaux que la version Python. node test_worker.mjs
 import { readFileSync } from "node:fs";
-import { detect, dueUnits, message } from "./worker.js";
+import { detect, dueUnits, message, githubDue } from "./worker.js";
 
 let fail = 0;
 const ok = (cond, what) => { if (!cond) { fail++; console.log("ÉCHEC", what); } };
@@ -32,5 +32,8 @@ ok(dueUnits(["H4"], T + 3600 + 240).length === 0, "pas de H4 à 09:04");
 for (let m = 0; m < 1440; m++) ok(dueUnits(U, T + m * 60).length <= 1, "une seule unité à la minute " + m);
 ok(message("EUR/USD", "H1", { sens: "ACHAT", prix: 1.11654, stop: 1.1141, objectif: 1.12142, rsi: 61.2, epoch: 0 })
    .startsWith("🟢 ACHAT EUR/USD (H1)\nPrix : 1.11654\nStop proposé : 1.11410\nObjectif proposé : 1.12142"), "message");
+// réveil de GitHub : 1 minute après chaque quart d'heure, et seulement à ces minutes
+const due = []; for (let m = 0; m < 60; m++) if (githubDue(T + m * 60)) due.push(m);
+ok(JSON.stringify(due) === JSON.stringify([1, 16, 31, 46]), "réveil GitHub à :01 :16 :31 :46");
 console.log(fail ? `${fail} TEST(S) EN ÉCHEC` : "TOUS LES TESTS PASSENT");
 process.exit(fail ? 1 : 0);
