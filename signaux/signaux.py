@@ -2,9 +2,9 @@
 téléphone (Telegram, ou l'application gratuite ntfy) quand ta stratégie donne un signal. C'est toi qui décides de trader.
 
 Stratégie (à la clôture de chaque bougie, sur chaque marché et chaque unité de temps choisis) :
-  ACHAT : le RSI 14 est passé sous 30 (survente) dans les dernières bougies, puis la MM8 passe au-dessus de la MM21,
-          les deux au-dessus de la MM50, et le prix clôture au-dessus de la MM50.
-  VENTE : l'inverse (RSI au-dessus de 70, MM8 sous la MM21, les deux sous la MM50, prix sous la MM50).
+  ACHAT : la MM8 croise la MM21 vers le haut, puis la MM8 et le prix cassent la MM50 vers le haut (signal à cette
+          cassure). Le RSI 14 confirme s'il a touché ou frôlé 30 avant ; ce n'est pas obligatoire (indiqué dans le message).
+  VENTE : l'inverse (croisement vers le bas, cassure de la MM50 vers le bas, RSI vers 70).
   La notification propose un stop (dernier creux / sommet) et un objectif (2 fois le risque) : à toi de juger.
 
 Données : API publique de Deriv (aucun compte, aucun mot de passe). Pas besoin de MT5 ni de ton PC.
@@ -59,7 +59,10 @@ DEFAULT = {
     "ntfy_canal": "",                        # créé au hasard au premier lancement : c'est ton canal privé
     "mm_rapide": 8, "mm_moyenne": 21, "mm_lente": 50,
     "rsi_periode": 14, "rsi_bas": 30, "rsi_haut": 70,
-    "rsi_memoire": 20,                       # la survente / le surachat doit dater de moins de N bougies
+    "rsi_marge": 5,                          # « frôler » : le RSI est descendu sous 30 + 5 (ou monté au-dessus de 70 - 5)
+    "rsi_memoire": 50,                       # ... au cours des N dernières bougies
+    "rsi_obligatoire": False,                # False : le RSI confirme seulement (indiqué dans le message) ; True : exigé
+    "croisement_max": 30,                    # la cassure de la MM50 doit suivre le croisement MM8/MM21 de N bougies au plus
     "stop_bougies": 10,                      # stop proposé : plus bas / plus haut des N dernières bougies
     "objectif_r": 2.0,                       # objectif proposé : N fois la distance au stop (0 = pas d'objectif)
 }
@@ -131,31 +134,61 @@ def rsi(c: pd.Series, n: int) -> pd.Series:
 
 
 def detect(df: pd.DataFrame, p: dict) -> dict | None:
-    """Signal sur la DERNIÈRE bougie terminée de df, ou None."""
-    need = p["mm_lente"] + p["rsi_memoire"] + 2
+    """Signal sur la DERNIÈRE bougie terminée de df, ou None.
+    ACHAT : 1) la MM8 croise la MM21 vers le haut ; 2) ensuite (ou sur la même bougie) la MM8 et le prix passent
+    au-dessus de la MM50 : c'est la cassure, le signal part à la clôture de cette bougie.
+    Le RSI confirme : il a touché ou frôlé 30 avant (survente). VENTE : l'inverse (RSI vers 70)."""
+    need = p["mm_lente"] + p["croisement_max"] + 2
     if len(df) < need:
         return None
     c = df["close"]
     f, m, s = (c.rolling(p[k]).mean() for k in ("mm_rapide", "mm_moyenne", "mm_lente"))
     r = rsi(c, p["rsi_periode"])
-    up = (f > m) & (m > s) & (c > s)
-    dn = (f < m) & (m < s) & (c < s)
-    recent = r.iloc[-p["rsi_memoire"]:]
-    price = float(c.iloc[-1])
-    if up.iloc[-1] and not up.iloc[-2] and recent.min() < p["rsi_bas"]:
-        stop = float(df["low"].iloc[-p["stop_bougies"]:].min())
-        side = 1
-    elif dn.iloc[-1] and not dn.iloc[-2] and recent.max() > p["rsi_haut"]:
-        stop = float(df["high"].iloc[-p["stop_bougies"]:].max())
-        side = -1
-    else:
+    n = len(df)
+
+    def last_cross(up: bool) -> int | None:
+        """Indice de la bougie du dernier croisement MM8/MM21 dans ce sens, si la MM8 est restée du bon côté depuis."""
+        above = (f > m) if up else (f < m)
+        if not above.iloc[-1]:
+            return None
+        k = n - 1
+        while k > 0 and above.iloc[k - 1]:
+            k -= 1
+        return k if k > 0 else None
+
+    side = 0
+    for up in (True, False):
+        broke = ((f > s) & (c > s)) if up else ((f < s) & (c < s))
+        if not (broke.iloc[-1] and not broke.iloc[-2]):         # la cassure de la MM50 se fait sur CETTE bougie
+            continue
+        k = last_cross(up)
+        if k is None or n - 1 - k > p["croisement_max"]:        # croisement 8/21 trop ancien : ce n'est pas le même mouvement
+            continue
+        if broke.iloc[k:n - 1].any():                             # déjà cassée depuis ce croisement : un seul signal par croisement
+            continue
+        side = 1 if up else -1
+        break
+    if not side:
         return None
+    k = last_cross(side > 0)
+    window = r.iloc[max(0, k - p["rsi_memoire"]):n]
+    if side > 0:
+        extreme = float(window.min())
+        confirm = extreme <= p["rsi_bas"] + p["rsi_marge"]
+    else:
+        extreme = float(window.max())
+        confirm = extreme >= p["rsi_haut"] - p["rsi_marge"]
+    if p["rsi_obligatoire"] and not confirm:
+        return None
+    price = float(c.iloc[-1])
+    stop = float(df["low"].iloc[-p["stop_bougies"]:].min()) if side > 0 else float(df["high"].iloc[-p["stop_bougies"]:].max())
     risk = (price - stop) * side
     if risk <= 0:
         return None
     target = price + side * p["objectif_r"] * risk if p["objectif_r"] > 0 else None
     return {"sens": "ACHAT" if side > 0 else "VENTE", "prix": price, "stop": stop, "objectif": target,
-            "rsi": float(r.iloc[-1]), "epoch": int(df["epoch"].iloc[-1])}
+            "rsi": float(r.iloc[-1]), "rsi_extreme": extreme, "rsi_confirme": bool(confirm),
+            "croisement_il_y_a": n - 1 - k, "epoch": int(df["epoch"].iloc[-1])}
 
 
 def fmt_price(x: float) -> str:
@@ -167,7 +200,13 @@ def message(name: str, tf: str, sig: dict) -> tuple[str, str]:
     lines = [f"Prix : {fmt_price(sig['prix'])}", f"Stop proposé : {fmt_price(sig['stop'])}"]
     if sig["objectif"] is not None:
         lines.append(f"Objectif proposé : {fmt_price(sig['objectif'])}")
-    lines.append(f"RSI : {sig['rsi']:.0f}")
+    lvl = "30" if sig["sens"] == "ACHAT" else "70"
+    if "rsi_confirme" in sig:
+        lines.append(f"RSI : {sig['rsi']:.0f} | confirmation (vers {lvl}) : "
+                     + (f"oui, il est allé à {sig['rsi_extreme']:.0f}" if sig["rsi_confirme"] else f"non (au plus loin {sig['rsi_extreme']:.0f})"))
+        lines.append(f"Croisement MM8/MM21 il y a {sig['croisement_il_y_a']} bougie(s), cassure de la MM50 maintenant")
+    else:
+        lines.append(f"RSI : {sig['rsi']:.0f}")
     t = time.strftime("%d/%m %H:%M UTC", time.gmtime(sig["epoch"] + GRAN[tf]))
     lines.append(f"Bougie fermée à {t}")
     return title, "\n".join(lines)

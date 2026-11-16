@@ -47,7 +47,7 @@ def test_un_seul_signal_par_mouvement():
     assert len(hits) == 1                                  # l'alignement ne se « forme » qu'une fois
 
 
-def test_pas_de_signal_sans_survente():
+def test_pas_de_signal_sans_croisement_ni_cassure():
     close = np.concatenate((np.full(60, 100.0), 100 + np.cumsum(np.full(80, 0.05))))   # hausse douce, RSI jamais < 30
     assert first_signal(close)[1] is None
 
@@ -97,6 +97,26 @@ def test_premier_passage_silencieux_et_secrets_par_variables():
         assert "1:X" not in s.CONFIG.read_text(encoding="utf-8")   # le secret n'est jamais écrit sur disque
     finally:
         del os.environ["TELEGRAM_TOKEN"], os.environ["TELEGRAM_CHAT_ID"]
+
+
+def test_croisement_8_21_puis_cassure_de_la_50():
+    i, sig = first_signal(path_down_then_up(60))
+    assert sig["croisement_il_y_a"] >= 1                 # le croisement 8/21 a eu lieu AVANT la cassure de la MM50
+    assert sig["rsi_confirme"] and sig["rsi_extreme"] <= 35       # la baisse a mis le RSI en survente : confirmé
+
+
+def test_rsi_confirmation_ou_obligation():
+    # remontée sans survente préalable : signal quand même, mais « non confirmé » ; refusé si le RSI est obligatoire
+    close = np.concatenate((np.full(40, 105.0), np.linspace(105, 100, 60), 100 + np.cumsum(np.full(60, 0.6))))
+    close[40:100] += np.where(np.arange(60) % 2, 0.35, -0.35)          # baisse hachée : le RSI ne va pas jusqu'à 35
+    i, sig = first_signal(close)
+    assert sig is not None and sig["sens"] == "ACHAT" and not sig["rsi_confirme"]
+    old = P["rsi_obligatoire"]
+    P["rsi_obligatoire"] = True
+    try:
+        assert first_signal(close)[1] is None
+    finally:
+        P["rsi_obligatoire"] = old
 
 
 if __name__ == "__main__":
