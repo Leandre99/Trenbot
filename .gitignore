@@ -1,25 +1,8 @@
 __pycache__/
-cache/
-*.csv
-bot.log
-state.json
-trades_log.csv
-settings.json
-accounts.json
-state_*.json
-bot_trade.lock
+*.log
 .env
-*.png
 
-# recherche : donnees telechargees et resultats (volumineux)
-research/data/
-research/out/
-research/__pycache__/
-research/*.log
-research/restore.txt
-dashboard.log
-
-# bot de signaux : canal prive, memoire et journal
+# Bot de signaux : canal privé, mémoire et journal
 signaux/config.json
 signaux/etat.json
 signaux/signaux.log
