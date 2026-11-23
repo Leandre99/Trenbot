@@ -10,7 +10,7 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
 - **Or (XAU/USD)** : `frxXAUUSD`
 - **Step Index** : `stpRNG`
 - **Indices de Volatilité standard** :
-  - Volatility 10 (`R_10`), 25 (`R_25`), 50 (`R_50`), 75 (`R_75`), 100 (`R_100`)
+  - Volatility 10 (`R_10`),15 (`R_15`) 25 (`R_25`), 50 (`R_50`), 75 (`R_75`), 100 (`R_100`)
 - **Indices de Volatilité 1 seconde (1s)** :
   - Volatility 10 (1s) (`1HZ10V`), 15 (1s) (`1HZ15V`), 25 (1s) (`1HZ25V`), 50 (1s) (`1HZ50V`), 75 (1s) (`1HZ75V`), 100 (1s) (`1HZ100V`)
 

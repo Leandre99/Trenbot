@@ -45,7 +45,7 @@ DEFAULT = {
     "marches": {
         "Or": "frxXAUUSD",
         "Step Index": "stpRNG",
-        "Volatility 10": "R_10", "Volatility 25": "R_25", "Volatility 50": "R_50", "Volatility 75": "R_75",
+        "Volatility 10": "R_10","Volatility 15": "R_15", "Volatility 25": "R_25", "Volatility 50": "R_50", "Volatility 75": "R_75",
         "Volatility 100": "R_100",
         "Volatility 10 (1s)": "1HZ10V", "Volatility 15 (1s)": "1HZ15V", "Volatility 25 (1s)": "1HZ25V",
         "Volatility 50 (1s)": "1HZ50V", "Volatility 75 (1s)": "1HZ75V", "Volatility 100 (1s)": "1HZ100V",
@@ -257,7 +257,6 @@ def _notify_ntfy(cfg: dict, title: str, text: str, buy: bool | None = None) -> b
     return _post_json(cfg["ntfy_serveur"].rstrip("/"), body)
 
 
-# ------------------------------------------------------------------ un passage
 def due_units(cfg: dict, st: dict, now: float) -> list[str]:
     """Unités dont une bougie vient de se terminer depuis le dernier passage."""
     due = []
