@@ -51,7 +51,8 @@ DEFAULT = {
         "Volatility 50 (1s)": "1HZ50V", "Volatility 75 (1s)": "1HZ75V", "Volatility 100 (1s)": "1HZ100V",
     },
     # absents de l'API publique de Deriv : CAD/CHF, CAD/JPY, CHF/JPY, Volatility 150 (1s)
-    "unites": ["M15", "M30", "H1", "H4"],          # au choix : M1 M5 M15 M30 H1 H4 D1
+    "unites": ["M30", "H1", "H4"],                 # unités de tous les marchés (au choix : M1 M5 M15 M30 H1 H4 D1)
+    "unites_marche": {"Or": ["M15", "M30", "H1", "H4"]},   # exceptions : unités propres à un marché (nom affiché)
     "telegram_token": "",                    # jeton donné par @BotFather (reste sur ta machine, jamais sur GitHub)
     "telegram_chat_id": "",                  # rempli tout seul par : python signaux.py --telegram
     "ntfy_serveur": "https://ntfy.sh",
@@ -78,7 +79,7 @@ def load_config() -> dict:
         cfg.update(json.loads(CONFIG.read_text(encoding="utf-8")))
     if not cfg["ntfy_canal"]:
         cfg["ntfy_canal"] = "signaux-" + secrets.token_hex(6)      # nom difficile à deviner = canal privé
-    bad = [u for u in cfg["unites"] if u not in GRAN]
+    bad = [u for u in all_units(cfg) if u not in GRAN]
     if bad:
         raise SystemExit(f"Unité(s) de temps inconnue(s) dans config.json : {bad}. Choix : {list(GRAN)}")
     CONFIG.write_text(json.dumps(cfg, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -276,10 +277,21 @@ def _notify_ntfy(cfg: dict, title: str, text: str, buy: bool | None = None) -> b
     return _post_json(cfg["ntfy_serveur"].rstrip("/"), body)
 
 
+def market_units(cfg: dict, name: str) -> list[str]:
+    """Unités de temps surveillées pour ce marché : son exception dans unites_marche, sinon unites."""
+    return (cfg.get("unites_marche") or {}).get(name, cfg["unites"])
+
+
+def all_units(cfg: dict) -> list[str]:
+    """Toutes les unités surveillées, au moins pour un marché (dans l'ordre de GRAN)."""
+    used = set(cfg["unites"]).union(*(cfg.get("unites_marche") or {}).values())
+    return [u for u in GRAN if u in used] + sorted(used - set(GRAN))
+
+
 def due_units(cfg: dict, st: dict, now: float) -> list[str]:
     """Unités dont une bougie vient de se terminer depuis le dernier passage."""
     due = []
-    for tf in cfg["unites"]:
+    for tf in all_units(cfg):
         g = GRAN[tf]
         last_open = (int(now) // g) * g - g          # ouverture de la dernière bougie terminée
         if st.get("vu", {}).get(tf) != last_open:
@@ -295,7 +307,7 @@ def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, no
     units = due_units(cfg, st, now) if units is None else units
     if not units:
         return []
-    reqs = [(code, GRAN[tf]) for tf in units for code in cfg["marches"].values()]
+    reqs = [(code, GRAN[tf]) for tf in units for name, code in cfg["marches"].items() if tf in market_units(cfg, name)]
     data = asyncio.run(_fetch_all(reqs))
     found = []
     sent = st.setdefault("envoyes", {})
@@ -306,6 +318,8 @@ def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, no
             st.setdefault("vu", {})[tf] = last_open
             continue
         for name, code in cfg["marches"].items():
+            if tf not in market_units(cfg, name):
+                continue
             df = candles(data.get((code, g), []), g, now)
             if df.empty:
                 continue
@@ -348,7 +362,7 @@ def main() -> None:
         log.info("Notifications : Telegram")
     else:
         log.info("Notifications : ntfy, canal %s  (abonne-toi à ce nom dans l'application ntfy)", cfg["ntfy_canal"])
-    log.info("Marchés : %s | unités : %s", ", ".join(cfg["marches"]), ", ".join(cfg["unites"]))
+    log.info("Marchés : %s | unités : %s", ", ".join(cfg["marches"]), ", ".join(cfg["unites"]) + f" (exceptions : {cfg.get('unites_marche') or 'aucune'})")
     if args.test:
         ok = notify(cfg, "Essai trendbot", "Si tu lis ceci, les signaux arriveront bien sur ton téléphone.")
         log.info("notification d'essai : %s", "envoyée" if ok else "ÉCHEC")
@@ -360,11 +374,11 @@ def main() -> None:
         log.info("passage terminé : %d signal(aux) | bougies vues : %s", len(found), st.get("vu"))
         return
     if args.once:
-        found = run_once(cfg, {}, not args.sans_notif, units=cfg["unites"])
+        found = run_once(cfg, {}, not args.sans_notif, units=all_units(cfg))
         log.info("passage terminé : %d signal(aux)", len(found))
         return
     if not args.sans_notif:
-        notify(cfg, "Bot de signaux démarré", f"Unités : {', '.join(cfg['unites'])}\nMarchés : {len(cfg['marches'])}")
+        notify(cfg, "Bot de signaux démarré", f"Unités : {', '.join(all_units(cfg))}\nMarchés : {len(cfg['marches'])}")
     while True:
         try:
             run_once(cfg, st, not args.sans_notif)

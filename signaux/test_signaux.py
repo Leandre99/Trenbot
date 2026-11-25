@@ -80,6 +80,17 @@ def test_unites_a_traiter():
     assert s.due_units(cfg, st, now + 900) == ["M15"]           # 15 min plus tard : seulement M15
 
 
+def test_m15_seulement_pour_l_or():
+    assert s.market_units(P, "Or") == ["M15", "M30", "H1", "H4"]
+    assert s.market_units(P, "Volatility 75") == ["M30", "H1", "H4"]
+    assert s.all_units(P) == ["M15", "M30", "H1", "H4"]
+    reqs = []
+    s._fetch_all = lambda r: reqs.extend(r) or {}
+    s.asyncio.run = lambda x: x
+    s.run_once(dict(P), {}, send=False, units=["M15"], now=10 * 3600 + 30)
+    assert reqs == [("frxXAUUSD", 900)]                        # en M15, seul l'or est demandé à Deriv
+
+
 def test_message_lisible():
     t, m = s.message("EUR/USD", "H1", {"sens": "ACHAT", "prix": 1.11654, "stop": 1.1141, "objectif": 1.12142,
                                         "rsi": 61.2, "epoch": 0})
@@ -102,7 +113,7 @@ def test_premier_passage_silencieux_et_secrets_par_variables():
     s._fetch_all = lambda reqs: calls.append(reqs) or {}
     s.asyncio.run = lambda x: x                      # _fetch_all remplacé : pas de réseau
     found = s.run_once(dict(P), st, send=False, now=10 * 3600 + 30, first_silent=True)
-    assert found == [] and set(st["vu"]) == set(P["unites"])       # première fois : noté, rien envoyé
+    assert found == [] and set(st["vu"]) == set(s.all_units(P))     # première fois : noté, rien envoyé
     os.environ["TELEGRAM_TOKEN"], os.environ["TELEGRAM_CHAT_ID"] = "1:X", "7"
     try:
         cfg = s.load_config()

@@ -16,6 +16,8 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
 
 *(Toutes les paires de devises Forex ont été retirées).*
 
+**Unités de temps** : **M30, H1, H4** pour tous les marchés, plus **M15 pour l'Or uniquement** (réglages `unites` et `unites_marche`, depuis le 26/11/2026 ; avant, M15 était surveillé sur tous les marchés).
+
 ---
 
 ## Stratégie (à la clôture de chaque bougie)
