@@ -11,8 +11,9 @@ Il **ne prend aucune position**. Il surveille les marchés et t'envoie une **not
 ta stratégie donne un signal. C'est toi qui décides de trader.
 
 **Stratégie** (à la clôture de chaque bougie) :
-- **Achat** : la MM8 croise la MM21 vers le haut, **puis** la MM8, la MM21 et le prix cassent la MM50 vers le haut : le signal
-  part à la clôture de cette cassure (un seul signal par croisement ; la cassure doit suivre le croisement de
+- **Achat** : la MM8 croise la MM21 vers le haut, **puis** la MM8 et le prix (clôture d'une bougie) cassent la MM50 vers le haut : le signal
+  part à la clôture de cette cassure. La MM21 n'a pas besoin de passer au-dessus de la MM50
+  (changement du 25/11/2026 : voir « Historique des changements de stratégie » dans le README principal) (un seul signal par croisement ; la cassure doit suivre le croisement de
   30 bougies au plus). Le **RSI 14 confirme** s'il a touché ou frôlé 30 (35 ou moins) avant : ce n'est pas obligatoire,
   le message dit si c'est confirmé (`rsi_obligatoire` pour l'exiger).
 - **Vente** : l'inverse (croisement vers le bas, cassure de la MM50 vers le bas, RSI vers 70).
@@ -41,7 +42,7 @@ affiché au démarrage.
 | `unites` | unités de temps : `M1`, `M5`, `M15`, `M30`, `H1`, `H4`, `D1` |
 | `mm_rapide`, `mm_moyenne`, `mm_lente` | 8, 21, 50 |
 | `rsi_periode`, `rsi_bas`, `rsi_haut` | 14, 30, 70 |
-| `rsi_memoire` | la survente / le surachat doit dater de moins de N bougies (20) |
+| `rsi_memoire` | fenêtre du RSI : de N bougies avant le croisement MM8/MM21 jusqu'à maintenant (50) |
 | `stop_bougies`, `objectif_r` | stop proposé sur N bougies (10) ; objectif = N fois le risque (2, ou 0 pour aucun) |
 | `ntfy_canal` | ton canal privé (nom au hasard : ne le partage pas) |
 

@@ -20,9 +20,50 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
 
 ## Stratégie (à la clôture de chaque bougie)
 
-- **Achat** : La MM8 croise la MM21 vers le haut, **puis** la MM8, la MM21 et le prix cassent la MM50 vers le haut. Le signal part à la clôture de cette cassure (cassure dans les 30 bougies suivant le croisement). Le **RSI 14** confirme s'il a touché ou frôlé la zone de survente (35 ou moins).
-- **Vente** : Symétrique (croisement vers le bas, cassure de la MM50 vers le bas, RSI vers 70).
-- **Gestion proposée** : Stop de protection (plus bas / plus haut des 10 dernières bougies) et Objectif à 2R (2 fois la distance au stop).
+- **Achat** : La MM8 croise la MM21 vers le haut (que ce soit au-dessus ou en dessous de la MM50), **puis** la **MM8** et le **prix** (la clôture d'une bougie) cassent la MM50 vers le haut. Le signal part à la clôture de la bougie où les deux sont enfin au-dessus de la MM50. La **MM21 n'a pas besoin** de passer au-dessus de la MM50.
+- **Vente** : Symétrique (croisement MM8/MM21 vers le bas, puis MM8 et clôture sous la MM50).
+- **Conditions conservées** :
+  - la MM8 doit rester du bon côté de la MM21 depuis le croisement ;
+  - la cassure doit arriver dans les **30 bougies** suivant le croisement (`croisement_max`) ;
+  - **un seul signal par croisement** : si le prix a déjà clôturé de l'autre côté de la MM50 depuis le croisement, pas de nouveau signal ;
+  - le **RSI 14** confirme s'il est descendu à 35 ou moins (achat) / monté à 65 ou plus (vente), sur une fenêtre allant de 50 bougies avant le croisement jusqu'à maintenant. Non obligatoire par défaut (`rsi_obligatoire`).
+- **Gestion proposée** (affichée « SL » et « TP » dans les messages) : SL = plus bas / plus haut des 10 dernières bougies (`stop_bougies`) ; TP à 2R = 2 fois la distance prix → SL (`objectif_r`). Signal annulé si le prix est déjà de l'autre côté du SL.
+
+---
+
+## Historique des changements de stratégie
+
+### 25/11/2026 : la MM21 n'a plus besoin de casser la MM50
+
+**Avant (version sauvegardée sur la branche `sauvegarde-avant-cassure-prix`, commit `da2646f`)**
+
+Pour un achat, la cassure de la MM50 exigeait que **trois éléments** soient au-dessus de la MM50 sur la bougie du signal (et pas tous les trois sur la bougie d'avant) :
+la **MM8**, la **MM21** et le **prix de clôture**. Le signal attendait donc que les moyennes 8 et 21 aient elles aussi cassé la MM50.
+Code d'origine dans `signaux/signaux.py`, fonction `detect` :
+
+```python
+broke = ((f > s) & (m > s) & (c > s)) if up else ((f < s) & (m < s) & (c < s))
+```
+
+**Après (version actuelle)**
+
+Seuls la **MM8** et le **prix de clôture** doivent passer de l'autre côté de la MM50 ; la **MM21** n'est plus exigée :
+
+```python
+broke = ((f > s) & (c > s)) if up else ((f < s) & (c < s))
+```
+
+Tout le reste est inchangé (croisement MM8/MM21 préalable, 30 bougies max, un seul signal par croisement, RSI, stop, objectif).
+Conséquence à connaître : comme la règle « un seul signal par croisement » est gardée, si la MM8 et le prix sont **déjà** au-dessus de la MM50 au moment du croisement 8/21, ce croisement ne donne en pratique pas de signal.
+
+(Étape intermédiaire du même jour, jamais mise en service : on n'exigeait que le prix, `broke = (c > s) if up else (c < s)`. On a remis l'obligation pour la MM8.)
+
+**Revenir en arrière**
+
+- Remettre l'ancienne ligne `broke = ...` ci-dessus dans `detect`, ou
+- revenir au code sauvegardé : `git checkout sauvegarde-avant-cassure-prix -- signaux/signaux.py signaux/test_signaux.py`
+
+> Note : le worker Cloudflare (`signaux/cloudflare/worker.js`) contient une ancienne version de la stratégie, mais il ne sert que d'horloge (il déclenche GitHub Actions) : c'est `signaux.py` qui décide des signaux.
 
 ---
 

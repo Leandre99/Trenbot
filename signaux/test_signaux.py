@@ -70,7 +70,7 @@ def test_unites_a_traiter():
 def test_message_lisible():
     t, m = s.message("EUR/USD", "H1", {"sens": "ACHAT", "prix": 1.11654, "stop": 1.1141, "objectif": 1.12142,
                                         "rsi": 61.2, "epoch": 0})
-    assert t == "ACHAT EUR/USD (H1)" and "Stop proposé : 1.11410" in m and "Objectif proposé : 1.12142" in m
+    assert t == "ACHAT EUR/USD (H1)" and "SL : 1.11410" in m and "TP : 1.12142" in m
 
 
 def test_telegram_prioritaire_et_jeton_masque():
@@ -99,15 +99,20 @@ def test_premier_passage_silencieux_et_secrets_par_variables():
         del os.environ["TELEGRAM_TOKEN"], os.environ["TELEGRAM_CHAT_ID"]
 
 
-def test_croisement_8_21_puis_cassure_de_la_50():
-    i, sig = first_signal(path_down_then_up(60))
-    assert sig["croisement_il_y_a"] >= 1                 # le croisement 8/21 a eu lieu AVANT la cassure de la MM50
+def test_croisement_8_21_puis_cassure_de_la_50_par_le_prix():
+    close = path_down_then_up(60)
+    i, sig = first_signal(close)
+    assert sig["croisement_il_y_a"] >= 0                 # croisement 8/21 avant (ou sur) la bougie de la cassure
     assert sig["rsi_confirme"] and sig["rsi_extreme"] <= 35       # la baisse a mis le RSI en survente : confirmé
+    c = pd.Series(close[:i])
+    f, m, s50 = (c.rolling(k).mean().iloc[-1] for k in (8, 21, 50))
+    assert c.iloc[-1] > s50 and f > s50                  # le prix et la MM8 ont cassé la MM50...
+    assert m < s50                                       # ... sans attendre que la MM21 la casse aussi
 
 
 def test_rsi_confirmation_ou_obligation():
     # remontée sans survente préalable : signal quand même, mais « non confirmé » ; refusé si le RSI est obligatoire
-    close = np.concatenate((np.full(40, 105.0), np.linspace(105, 100, 60), 100 + np.cumsum(np.full(60, 0.6))))
+    close = np.concatenate((np.full(40, 105.0), np.linspace(105, 100, 60), 100 + np.cumsum(np.full(80, 0.15))))
     close[40:100] += np.where(np.arange(60) % 2, 0.35, -0.35)          # baisse hachée : le RSI ne va pas jusqu'à 35
     i, sig = first_signal(close)
     assert sig is not None and sig["sens"] == "ACHAT" and not sig["rsi_confirme"]

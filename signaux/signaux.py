@@ -2,8 +2,8 @@
 téléphone (Telegram, ou l'application gratuite ntfy) quand ta stratégie donne un signal. C'est toi qui décides de trader.
 
 Stratégie (à la clôture de chaque bougie, sur chaque marché et chaque unité de temps choisis) :
-  ACHAT : la MM8 croise la MM21 vers le haut, puis la MM8, la MM21 et le prix cassent la MM50 vers le haut (signal à
-          cette cassure). Le RSI 14 confirme s'il a touché ou frôlé 30 avant ; ce n'est pas obligatoire (indiqué dans le message).
+  ACHAT : la MM8 croise la MM21 vers le haut, puis la MM8 et le prix (la clôture d'une bougie) cassent la MM50 vers le
+          haut (signal à cette cassure ; la MM21 n'a pas besoin d'être au-dessus de la MM50). Le RSI 14 confirme s'il a touché ou frôlé 30 avant ; ce n'est pas obligatoire (indiqué dans le message).
   VENTE : l'inverse (croisement vers le bas, cassure de la MM50 vers le bas, RSI vers 70).
   La notification propose un stop (dernier creux / sommet) et un objectif (2 fois le risque) : à toi de juger.
 
@@ -134,8 +134,9 @@ def rsi(c: pd.Series, n: int) -> pd.Series:
 
 def detect(df: pd.DataFrame, p: dict) -> dict | None:
     """Signal sur la DERNIÈRE bougie terminée de df, ou None.
-    ACHAT : 1) la MM8 croise la MM21 vers le haut ; 2) ensuite (ou sur la même bougie) la MM8, la MM21 et le prix
-    passent au-dessus de la MM50 : c'est la cassure, le signal part à la clôture de cette bougie.
+    ACHAT : 1) la MM8 croise la MM21 vers le haut (au-dessus ou en dessous de la MM50, peu importe) ; 2) ensuite (ou
+    sur la même bougie) la MM8 et le prix (clôture) passent au-dessus de la MM50 : c'est la cassure, le signal part à la
+    clôture de cette bougie. La MM21 n'a PAS besoin d'être passée au-dessus de la MM50.
     Le RSI confirme : il a touché ou frôlé 30 avant (survente). VENTE : l'inverse (RSI vers 70)."""
     need = p["mm_lente"] + p["croisement_max"] + 2
     if len(df) < need:
@@ -157,7 +158,7 @@ def detect(df: pd.DataFrame, p: dict) -> dict | None:
 
     side = 0
     for up in (True, False):
-        broke = ((f > s) & (m > s) & (c > s)) if up else ((f < s) & (m < s) & (c < s))   # MM8, MM21 et prix de l'autre côté de la MM50
+        broke = ((f > s) & (c > s)) if up else ((f < s) & (c < s))   # MM8 et clôture de l'autre côté de la MM50 (MM21 : peu importe)
         if not (broke.iloc[-1] and not broke.iloc[-2]):         # la cassure de la MM50 se fait sur CETTE bougie
             continue
         k = last_cross(up)
@@ -197,9 +198,9 @@ def fmt_price(x: float) -> str:
 def message(name: str, tf: str, sig: dict) -> tuple[str, str]:
     """Message court : sens, marché et unité en titre, puis prix, stop et objectif."""
     title = f"{sig['sens']} {name} ({tf})"
-    lines = [f"Prix : {fmt_price(sig['prix'])}", f"Stop proposé : {fmt_price(sig['stop'])}"]
+    lines = [f"Prix : {fmt_price(sig['prix'])}", f"SL : {fmt_price(sig['stop'])}"]
     if sig["objectif"] is not None:
-        lines.append(f"Objectif proposé : {fmt_price(sig['objectif'])}")
+        lines.append(f"TP : {fmt_price(sig['objectif'])}")
     return title, "\n".join(lines)
 
 
