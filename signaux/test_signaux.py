@@ -33,7 +33,20 @@ def test_achat_apres_survente_et_croisements():
     i, sig = first_signal(path_down_then_up(60))
     assert sig is not None and sig["sens"] == "ACHAT"
     assert sig["stop"] < sig["prix"] < sig["objectif"]
-    assert abs((sig["objectif"] - sig["prix"]) - 2 * (sig["prix"] - sig["stop"])) < 1e-9
+    a = s.atr(frame(path_down_then_up(60)[:i]), 14).iloc[-1]
+    assert abs((sig["prix"] - sig["stop"]) - 1.5 * a) < 1e-9          # SL à 1,5 ATR
+    assert abs((sig["objectif"] - sig["prix"]) - 1.5 * a) < 1e-9      # TP à 1,5 ATR
+
+
+def test_ancien_calcul_sl_tp_bougies():
+    p = dict(P, sl_tp_mode="bougies")
+    close = path_down_then_up(60)
+    for i in range(80, len(close) + 1):
+        sig = s.detect(frame(close[:i]), p)
+        if sig:
+            break
+    assert sig["stop"] == frame(close[:i])["low"].iloc[-10:].min()     # SL = plus bas des 10 dernières bougies
+    assert abs((sig["objectif"] - sig["prix"]) - 2 * (sig["prix"] - sig["stop"])) < 1e-9   # TP = 2R
 
 
 def test_vente_symetrique():

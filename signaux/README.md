@@ -17,7 +17,7 @@ ta stratégie donne un signal. C'est toi qui décides de trader.
   30 bougies au plus). Le **RSI 14 confirme** s'il a touché ou frôlé 30 (35 ou moins) avant : ce n'est pas obligatoire,
   le message dit si c'est confirmé (`rsi_obligatoire` pour l'exiger).
 - **Vente** : l'inverse (croisement vers le bas, cassure de la MM50 vers le bas, RSI vers 70).
-- La notification propose un **stop** (plus bas / plus haut des 10 dernières bougies) et un **objectif** (2 fois le risque).
+- La notification propose un **SL** et un **TP**, chacun à **1,5 ATR** du prix (ATR 14).
 
 Données : API publique de Deriv (aucun compte, aucun mot de passe). Notifications : **Telegram** (ou l'application gratuite ntfy).
 
@@ -43,7 +43,9 @@ affiché au démarrage.
 | `mm_rapide`, `mm_moyenne`, `mm_lente` | 8, 21, 50 |
 | `rsi_periode`, `rsi_bas`, `rsi_haut` | 14, 30, 70 |
 | `rsi_memoire` | fenêtre du RSI : de N bougies avant le croisement MM8/MM21 jusqu'à maintenant (50) |
-| `stop_bougies`, `objectif_r` | stop proposé sur N bougies (10) ; objectif = N fois le risque (2, ou 0 pour aucun) |
+| `sl_tp_mode` | `"atr"` (par défaut) ou `"bougies"` (ancien calcul) |
+| `atr_periode`, `sl_atr`, `tp_atr` | mode `atr` : ATR 14 ; SL à 1,5 ATR ; TP à 1,5 ATR (0 pour aucun) |
+| `stop_bougies`, `objectif_r` | mode `bougies` : SL sur N bougies (10) ; TP = N fois le risque (2, ou 0 pour aucun) |
 | `ntfy_canal` | ton canal privé (nom au hasard : ne le partage pas) |
 
 Après une modification, redémarre le bot (`sudo systemctl restart signaux` sur le serveur).

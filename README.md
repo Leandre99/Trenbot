@@ -27,11 +27,21 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
   - la cassure doit arriver dans les **30 bougies** suivant le croisement (`croisement_max`) ;
   - **un seul signal par croisement** : si le prix a déjà clôturé de l'autre côté de la MM50 depuis le croisement, pas de nouveau signal ;
   - le **RSI 14** confirme s'il est descendu à 35 ou moins (achat) / monté à 65 ou plus (vente), sur une fenêtre allant de 50 bougies avant le croisement jusqu'à maintenant. Non obligatoire par défaut (`rsi_obligatoire`).
-- **Gestion proposée** (affichée « SL » et « TP » dans les messages) : SL = plus bas / plus haut des 10 dernières bougies (`stop_bougies`) ; TP à 2R = 2 fois la distance prix → SL (`objectif_r`). Signal annulé si le prix est déjà de l'autre côté du SL.
+- **Gestion proposée** (affichée « SL » et « TP » dans les messages) : SL et TP chacun à **1,5 ATR** du prix d'entrée (ATR 14 : taille moyenne des 14 dernières bougies). Réglages : `sl_tp_mode: "atr"`, `atr_periode`, `sl_atr`, `tp_atr`.
 
 ---
 
 ## Historique des changements de stratégie
+
+### 25/11/2026 : SL et TP à 1,5 ATR
+
+**Avant** : SL = plus bas (achat) / plus haut (vente) des 10 dernières bougies ; TP = 2 fois la distance prix → SL (2R). Signal annulé si le prix était déjà de l'autre côté du SL.
+
+**Après** : SL = prix ∓ 1,5 ATR et TP = prix ± 1,5 ATR (ratio 1:1).
+
+**Pourquoi** : `signaux/backtest.py` (environ 2100 trades par variante, 13 marchés, M15 à H4, jusqu'à 300 jours) a donné le meilleur résultat pour cette variante : 52 % de gagnants, +0,03 R par trade, contre 33 % et −0,01 R pour l'ancien calcul. **Attention** : toutes les variantes testées restaient proches de zéro et le spread n'était pas compté. Ce changement ne rend pas la stratégie gagnante à lui seul.
+
+**Revenir en arrière** : dans `config.json`, mettre `"sl_tp_mode": "bougies"` (l'ancien calcul est gardé, avec `stop_bougies` et `objectif_r`).
 
 ### 25/11/2026 : la MM21 n'a plus besoin de casser la MM50
 

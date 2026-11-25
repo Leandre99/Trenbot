@@ -5,7 +5,7 @@ Stratégie (à la clôture de chaque bougie, sur chaque marché et chaque unité
   ACHAT : la MM8 croise la MM21 vers le haut, puis la MM8 et le prix (la clôture d'une bougie) cassent la MM50 vers le
           haut (signal à cette cassure ; la MM21 n'a pas besoin d'être au-dessus de la MM50). Le RSI 14 confirme s'il a touché ou frôlé 30 avant ; ce n'est pas obligatoire (indiqué dans le message).
   VENTE : l'inverse (croisement vers le bas, cassure de la MM50 vers le bas, RSI vers 70).
-  La notification propose un stop (dernier creux / sommet) et un objectif (2 fois le risque) : à toi de juger.
+  La notification propose un SL et un TP, chacun à 1,5 ATR du prix (ATR 14) : à toi de juger.
 
 Données : API publique de Deriv (aucun compte, aucun mot de passe). Pas besoin de MT5 ni de ton PC.
 Réglages : config.json (créé au premier lancement, à côté de ce fichier).
@@ -62,8 +62,12 @@ DEFAULT = {
     "rsi_memoire": 50,                       # ... au cours des N dernières bougies
     "rsi_obligatoire": False,                # False : le RSI confirme seulement (indiqué dans le message) ; True : exigé
     "croisement_max": 30,                    # la cassure de la MM50 doit suivre le croisement MM8/MM21 de N bougies au plus
-    "stop_bougies": 10,                      # stop proposé : plus bas / plus haut des N dernières bougies
-    "objectif_r": 2.0,                       # objectif proposé : N fois la distance au stop (0 = pas d'objectif)
+    "sl_tp_mode": "atr",                     # "atr" : SL et TP à N fois l'ATR ; "bougies" : ancien calcul (stop_bougies / objectif_r)
+    "atr_periode": 14,
+    "sl_atr": 1.5,                           # SL = prix -/+ 1,5 ATR
+    "tp_atr": 1.5,                           # TP = prix +/- 1,5 ATR (0 = pas de TP)
+    "stop_bougies": 10,                      # mode "bougies" : SL = plus bas / plus haut des N dernières bougies
+    "objectif_r": 2.0,                       # mode "bougies" : TP = N fois la distance au SL (0 = pas de TP)
 }
 
 
@@ -132,6 +136,13 @@ def rsi(c: pd.Series, n: int) -> pd.Series:
     return 100 - 100 / (1 + up / dn.replace(0, np.nan))
 
 
+def atr(df: pd.DataFrame, n: int) -> pd.Series:
+    """ATR de Wilder : taille moyenne des bougies (écarts compris)."""
+    pc = df["close"].shift()
+    tr = pd.concat([df["high"] - df["low"], (df["high"] - pc).abs(), (df["low"] - pc).abs()], axis=1).max(axis=1)
+    return tr.ewm(alpha=1 / n, adjust=False).mean()
+
+
 def detect(df: pd.DataFrame, p: dict) -> dict | None:
     """Signal sur la DERNIÈRE bougie terminée de df, ou None.
     ACHAT : 1) la MM8 croise la MM21 vers le haut (au-dessus ou en dessous de la MM50, peu importe) ; 2) ensuite (ou
@@ -181,11 +192,18 @@ def detect(df: pd.DataFrame, p: dict) -> dict | None:
     if p["rsi_obligatoire"] and not confirm:
         return None
     price = float(c.iloc[-1])
-    stop = float(df["low"].iloc[-p["stop_bougies"]:].min()) if side > 0 else float(df["high"].iloc[-p["stop_bougies"]:].max())
+    if p.get("sl_tp_mode", "atr") == "atr":
+        a = float(atr(df, p["atr_periode"]).iloc[-1])
+        stop = price - side * p["sl_atr"] * a
+        target = price + side * p["tp_atr"] * a if p["tp_atr"] > 0 else None
+    else:
+        stop = float(df["low"].iloc[-p["stop_bougies"]:].min()) if side > 0 else float(df["high"].iloc[-p["stop_bougies"]:].max())
+        target = None
     risk = (price - stop) * side
-    if risk <= 0:
+    if not risk > 0:                                              # aussi si l'ATR n'est pas calculable (NaN)
         return None
-    target = price + side * p["objectif_r"] * risk if p["objectif_r"] > 0 else None
+    if p.get("sl_tp_mode", "atr") != "atr":
+        target = price + side * p["objectif_r"] * risk if p["objectif_r"] > 0 else None
     return {"sens": "ACHAT" if side > 0 else "VENTE", "prix": price, "stop": stop, "objectif": target,
             "rsi": float(r.iloc[-1]), "rsi_extreme": extreme, "rsi_confirme": bool(confirm),
             "croisement_il_y_a": n - 1 - k, "epoch": int(df["epoch"].iloc[-1])}
