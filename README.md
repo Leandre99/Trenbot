@@ -22,18 +22,24 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
 
 ## Stratégie (à la clôture de chaque bougie)
 
-- **Achat** : La MM8 croise la MM21 vers le haut (que ce soit au-dessus ou en dessous de la MM50), **puis** la **MM8** et le **prix** (la clôture d'une bougie) cassent la MM50 vers le haut. Le signal part à la clôture de la bougie où les deux sont enfin au-dessus de la MM50. La **MM21 n'a pas besoin** de passer au-dessus de la MM50.
-- **Vente** : Symétrique (croisement MM8/MM21 vers le bas, puis MM8 et clôture sous la MM50).
+- **Achat** : La MM8 croise la MM21 vers le haut, **puis** la **MM8**, la **MM21** et le **prix** (la clôture d'une bougie) cassent la MM50 vers le haut. Le signal part à la clôture de la bougie où les trois sont enfin au-dessus de la MM50.
+- **Vente** : Symétrique (croisement MM8/MM21 vers le bas, puis MM8, MM21 et clôture sous la MM50).
 - **Conditions conservées** :
   - la MM8 doit rester du bon côté de la MM21 depuis le croisement ;
   - la cassure doit arriver dans les **30 bougies** suivant le croisement (`croisement_max`) ;
   - **un seul signal par croisement** : si le prix a déjà clôturé de l'autre côté de la MM50 depuis le croisement, pas de nouveau signal ;
   - le **RSI 14** confirme s'il est descendu à 35 ou moins (achat) / monté à 65 ou plus (vente), sur une fenêtre allant de 50 bougies avant le croisement jusqu'à maintenant. Non obligatoire par défaut (`rsi_obligatoire`).
-- **Gestion proposée** (affichée « SL » et « TP » dans les messages) : SL et TP chacun à **1,5 ATR** du prix d'entrée (ATR 14 : taille moyenne des 14 dernières bougies). Réglages : `sl_tp_mode: "atr"`, `atr_periode`, `sl_atr`, `tp_atr`.
+- **Gestion proposée** : SL et TP chacun à **1,5 ATR** du prix d'entrée (ATR 14 : taille moyenne des 14 dernières bougies). Réglages : `sl_tp_mode: "atr"`, `atr_periode`, `sl_atr`, `tp_atr` (ancien calcul possible avec `"sl_tp_mode": "bougies"`).
+- **Message Telegram** (court) : sens, marché et unité en titre, puis `Prix`, `SL`, `TP`.
 
 ---
 
 ## Historique des changements de stratégie
+
+### 27/11/2026 : retour à la version de départ (MM8, MM21 et prix cassent la MM50)
+
+On revient à la stratégie du commit `da2646f` : la cassure de la MM50 exige à nouveau la **MM8, la MM21 et la clôture**. Le changement du 25/11 « la MM21 n'a plus besoin de casser la MM50 » (plus bas) est **retiré**.
+On garde : **SL et TP à 1,5 ATR**, **M15 pour l'Or uniquement** (M30, H1, H4 pour tout le monde) et les **messages courts** (Prix, SL, TP).
 
 ### 25/11/2026 : SL et TP à 1,5 ATR
 

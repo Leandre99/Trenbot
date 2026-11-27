@@ -11,13 +11,12 @@ Il **ne prend aucune position**. Il surveille les marchés et t'envoie une **not
 ta stratégie donne un signal. C'est toi qui décides de trader.
 
 **Stratégie** (à la clôture de chaque bougie) :
-- **Achat** : la MM8 croise la MM21 vers le haut, **puis** la MM8 et le prix (clôture d'une bougie) cassent la MM50 vers le haut : le signal
-  part à la clôture de cette cassure. La MM21 n'a pas besoin de passer au-dessus de la MM50
-  (changement du 25/11/2026 : voir « Historique des changements de stratégie » dans le README principal) (un seul signal par croisement ; la cassure doit suivre le croisement de
+- **Achat** : la MM8 croise la MM21 vers le haut, **puis** la MM8, la MM21 et le prix (clôture d'une bougie) cassent la MM50 vers le haut : le signal
+  part à la clôture de cette cassure (un seul signal par croisement ; la cassure doit suivre le croisement de
   30 bougies au plus). Le **RSI 14 confirme** s'il a touché ou frôlé 30 (35 ou moins) avant : ce n'est pas obligatoire,
   le message dit si c'est confirmé (`rsi_obligatoire` pour l'exiger).
 - **Vente** : l'inverse (croisement vers le bas, cassure de la MM50 vers le bas, RSI vers 70).
-- La notification propose un **SL** et un **TP**, chacun à **1,5 ATR** du prix (ATR 14).
+- La notification (courte : Prix, SL, TP) propose un **SL** et un **TP**, chacun à **1,5 ATR** du prix (ATR 14).
 
 Données : API publique de Deriv (aucun compte, aucun mot de passe). Notifications : **Telegram** (ou l'application gratuite ntfy).
 
