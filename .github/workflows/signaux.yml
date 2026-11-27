@@ -1,5 +1,6 @@
 # Lance le bot de signaux (dossier signaux/) toutes les 5 minutes sur les serveurs de GitHub (gratuit pour un dépôt public).
 # Secrets à créer (Settings > Secrets and variables > Actions) : TELEGRAM_TOKEN et TELEGRAM_CHAT_ID.
+# Trading automatique (facultatif) : DERIV_APP_ID et DERIV_COMPTES (voir signaux/trading.py).
 name: signaux
 
 on:
@@ -29,6 +30,8 @@ jobs:
     env:
       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      DERIV_APP_ID: ${{ secrets.DERIV_APP_ID }}         # trading automatique (facultatif)
+      DERIV_COMPTES: ${{ secrets.DERIV_COMPTES }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

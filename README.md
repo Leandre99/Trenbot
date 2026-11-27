@@ -38,6 +38,10 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
 
 ## Historique des changements de stratégie
 
+### 28/11/2026 : trading automatique (M15 et M30)
+
+Le bot peut prendre les positions des signaux M15 et M30 sur Deriv (Multipliers), SL/TP du message, 2 % de risque (3 % max), 3 positions max. Démarrage et arrêt par Telegram (`/demarrer`, `/arreter`, `/etat`), arrêté par défaut. Ne fait rien sans les secrets `DERIV_APP_ID` et `DERIV_COMPTES`. Détails : `signaux/README.md`, section « Trading automatique ».
+
 ### 27/11/2026 : on n'attend plus la clôture des bougies
 
 **Avant** : seules les bougies terminées étaient analysées ; le signal partait à la clôture de la bougie de cassure.

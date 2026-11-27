@@ -20,6 +20,41 @@ ta stratégie donne un signal. C'est toi qui décides de trader.
 
 Données : API publique de Deriv (aucun compte, aucun mot de passe). Notifications : **Telegram** (ou l'application gratuite ntfy).
 
+## Trading automatique (M15 et M30)
+
+Le bot peut **prendre lui-même les positions** des signaux **M15 et M30** sur Deriv (contrats *Multipliers*), avec
+le SL et le TP du message (1,5 ATR). Code : `trading.py`. **Arrêté par défaut.**
+
+**Commandes Telegram** (seulement depuis ta discussion, prises en compte au passage suivant, 15 min au plus) :
+`/demarrer` : prend les prochains signaux ; `/arreter` : n'en prend plus (les positions ouvertes restent ouvertes) ;
+`/etat` : état et réglages.
+
+**Règles** (`trading_auto` dans `signaux.py`) :
+- perte au SL (commission comprise) = **2 % du solde** du compte au moment du trade ;
+- si les minimums de Deriv (mise 1 $, SL et TP à 0,10 $ minimum, multiplicateurs imposés) obligent à risquer plus,
+  jusqu'à **3 %** ; au-delà, le trade est **sauté** (message Telegram avec la raison) ;
+- le SL est toujours placé avant le « stop out » de Deriv (perte de toute la mise) ;
+- **3 positions maximum** par compte, jamais deux sur le même marché ;
+- avant d'acheter, le bot demande un prix à Deriv et vérifie que les niveaux de SL et TP renvoyés correspondent à ceux du message.
+
+> Avec un **petit compte** (10 $), la plupart des signaux seront sautés : sur les Volatility et le Step Index, le
+> plus petit trade possible risque 0,40 à 0,70 $, soit 4 à 7 % de 10 $. Il faut environ **25 $ ou plus** pour que
+> les trades passent à 2-3 %. **Commence sur le compte démo.**
+
+**Mise en place** (secrets GitHub : Settings → Secrets and variables → Actions) :
+1. Sur **developers.deriv.com** : crée une application de type **PAT** → tu obtiens un **App ID**. Secret `DERIV_APP_ID`.
+2. Dans le tableau de bord, section **API tokens** : crée un jeton avec le droit **trade** uniquement (pas de retrait).
+   Il n'est affiché qu'une fois.
+3. Note l'identifiant du compte (démo ou réel) à utiliser.
+4. Secret `DERIV_COMPTES` (un ou plusieurs comptes) :
+   ```json
+   [{"nom": "demo", "compte": "IDENTIFIANT_DU_COMPTE", "jeton": "TON_JETON"}]
+   ```
+5. Sur Telegram, envoie `/etat` pour vérifier, puis `/demarrer`.
+
+Les comptes rendus (positions prises, sautées et pourquoi) arrivent sur Telegram ; les journaux GitHub (publics)
+n'affichent aucun montant.
+
 ## 1. Sur ton téléphone : Telegram
 
 1. Dans Telegram, cherche **@BotFather**, appuie sur **Démarrer**, puis envoie `/newbot`.
