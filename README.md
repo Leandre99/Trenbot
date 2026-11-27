@@ -20,7 +20,9 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
 
 ---
 
-## Stratégie (à la clôture de chaque bougie)
+## Stratégie (sur la bougie en cours, sans attendre sa clôture)
+
+> Depuis le 27/11/2026 (`attendre_cloture: false`), le bot analyse aussi la bougie **pas encore terminée** : le signal part dès que les conditions sont réunies, sans attendre la fin de la bougie. Plus tôt, mais un signal peut **disparaître** si le prix repart avant la clôture. Un seul message par bougie, marché et unité.
 
 - **Achat** : La MM8 croise la MM21 vers le haut, **puis** la **MM8**, la **MM21** et le **prix** (la clôture d'une bougie) cassent la MM50 vers le haut. Le signal part à la clôture de la bougie où les trois sont enfin au-dessus de la MM50.
 - **Vente** : Symétrique (croisement MM8/MM21 vers le bas, puis MM8, MM21 et clôture sous la MM50).
@@ -35,6 +37,14 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
 ---
 
 ## Historique des changements de stratégie
+
+### 27/11/2026 : on n'attend plus la clôture des bougies
+
+**Avant** : seules les bougies terminées étaient analysées ; le signal partait à la clôture de la bougie de cassure.
+
+**Après** : la bougie en cours est analysée à chaque passage ; le signal part dès que les conditions sont réunies pendant la bougie. Risque : signal qui n'est plus valable à la clôture (le prix repasse de l'autre côté de la MM50).
+
+**Revenir en arrière** : dans `config.json`, mettre `"attendre_cloture": true` (ou changer la valeur par défaut dans `signaux.py`, nécessaire pour GitHub Actions qui n'a pas de `config.json`).
 
 ### 27/11/2026 : retour à la version de départ (MM8, MM21 et prix cassent la MM50)
 

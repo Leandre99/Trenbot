@@ -10,7 +10,7 @@
 Il **ne prend aucune position**. Il surveille les marchés et t'envoie une **notification sur ton téléphone** quand
 ta stratégie donne un signal. C'est toi qui décides de trader.
 
-**Stratégie** (à la clôture de chaque bougie) :
+**Stratégie** (sur la bougie en cours, sans attendre sa clôture : `attendre_cloture`) :
 - **Achat** : la MM8 croise la MM21 vers le haut, **puis** la MM8, la MM21 et le prix (clôture d'une bougie) cassent la MM50 vers le haut : le signal
   part à la clôture de cette cassure (un seul signal par croisement ; la cassure doit suivre le croisement de
   30 bougies au plus). Le **RSI 14 confirme** s'il a touché ou frôlé 30 (35 ou moins) avant : ce n'est pas obligatoire,
@@ -42,6 +42,7 @@ affiché au démarrage.
 | `unites_marche` | exceptions par marché (nom affiché -> unités). Par défaut `{"Or": ["M15", "M30", "H1", "H4"]}` : M15 pour l'or seulement |
 | `mm_rapide`, `mm_moyenne`, `mm_lente` | 8, 21, 50 |
 | `rsi_periode`, `rsi_bas`, `rsi_haut` | 14, 30, 70 |
+| `attendre_cloture` | `false` (par défaut) : analyse aussi la bougie en cours, signal plus tôt mais il peut disparaître ; `true` : bougies terminées seulement |
 | `rsi_memoire` | fenêtre du RSI : de N bougies avant le croisement MM8/MM21 jusqu'à maintenant (50) |
 | `sl_tp_mode` | `"atr"` (par défaut) ou `"bougies"` (ancien calcul) |
 | `atr_periode`, `sl_atr`, `tp_atr` | mode `atr` : ATR 14 ; SL à 1,5 ATR ; TP à 1,5 ATR (0 pour aucun) |

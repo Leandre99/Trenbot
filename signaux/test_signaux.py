@@ -71,6 +71,26 @@ def test_bougie_en_cours_ignoree():
     assert len(s.candles(raw, 3600, now=10800)) == 3
 
 
+def test_bougie_en_cours_gardee_si_on_n_attend_pas_la_cloture():
+    raw = [{"epoch": e, "open": 1, "high": 1, "low": 1, "close": 1} for e in (0, 3600, 7200)]
+    assert len(s.candles(raw, 3600, now=7200 + 100, en_cours=True)) == 3      # la bougie de 7200 est analysée
+    cfg = {"unites": ["M15", "H1"], "attendre_cloture": False}
+    assert s.due_units(cfg, {"vu": {"M15": 0, "H1": 0}}, 10 * 3600 + 30) == ["M15", "H1"]   # à chaque passage
+
+
+def test_signal_avant_la_cloture():
+    close = path_down_then_up(60)
+    i, _ = first_signal(close)
+    df = frame(close[:i])                                   # la bougie du signal est la dernière...
+    now = float(df["epoch"].iloc[-1]) + 1800                # ... et elle n'est pas finie (H1, à mi-chemin)
+    s._fetch_all = lambda r: {("X", 3600): df.to_dict("records")}
+    s.asyncio.run = lambda x: x
+    cfg = dict(P, marches={"Test": "X"}, unites=["H1"], unites_marche={})
+    found = s.run_once(dict(cfg, attendre_cloture=False), {}, send=False, now=now)
+    assert len(found) == 1 and found[0][2]["sens"] == "ACHAT"            # signal envoyé pendant la bougie
+    assert s.run_once(dict(cfg, attendre_cloture=True), {}, send=False, now=now) == []   # sinon : attend la clôture
+
+
 def test_unites_a_traiter():
     cfg = {"unites": ["M15", "H1"]}
     now = 10 * 3600 + 30

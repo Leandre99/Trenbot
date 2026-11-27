@@ -62,6 +62,8 @@ DEFAULT = {
     "rsi_marge": 5,                          # « frôler » : le RSI est descendu sous 30 + 5 (ou monté au-dessus de 70 - 5)
     "rsi_memoire": 50,                       # ... au cours des N dernières bougies
     "rsi_obligatoire": False,                # False : le RSI confirme seulement (indiqué dans le message) ; True : exigé
+    "attendre_cloture": False,               # False : analyse aussi la bougie EN COURS (signal plus tôt, mais il peut
+                                             #   disparaître avant la clôture) ; True : bougies terminées seulement
     "croisement_max": 30,                    # la cassure de la MM50 doit suivre le croisement MM8/MM21 de N bougies au plus
     "sl_tp_mode": "atr",                     # "atr" : SL et TP à N fois l'ATR ; "bougies" : ancien calcul (stop_bougies / objectif_r)
     "atr_periode": 14,
@@ -119,12 +121,12 @@ async def _fetch_all(requests: list[tuple[str, int]]) -> dict:
     return out
 
 
-def candles(raw: list, g: int, now: float) -> pd.DataFrame:
-    """Bougies TERMINÉES uniquement (Deriv renvoie aussi la bougie en cours)."""
+def candles(raw: list, g: int, now: float, en_cours: bool = False) -> pd.DataFrame:
+    """Bougies TERMINÉES (Deriv renvoie aussi la bougie en cours) ; avec en_cours=True, la bougie en cours est gardée."""
     df = pd.DataFrame(raw)
     if df.empty:
         return df
-    df = df[df["epoch"] + g <= now].copy()
+    df = (df[df["epoch"] <= now] if en_cours else df[df["epoch"] + g <= now]).copy()
     df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
     return df.reset_index(drop=True)
 
@@ -288,7 +290,10 @@ def all_units(cfg: dict) -> list[str]:
 
 
 def due_units(cfg: dict, st: dict, now: float) -> list[str]:
-    """Unités dont une bougie vient de se terminer depuis le dernier passage."""
+    """Unités dont une bougie vient de se terminer depuis le dernier passage (toutes à chaque passage si on
+    n'attend pas la clôture : la bougie en cours est réexaminée à chaque fois)."""
+    if not cfg.get("attendre_cloture", True):
+        return all_units(cfg)
     due = []
     for tf in all_units(cfg):
         g = GRAN[tf]
@@ -310,16 +315,17 @@ def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, no
     data = asyncio.run(_fetch_all(reqs))
     found = []
     sent = st.setdefault("envoyes", {})
+    live = not cfg.get("attendre_cloture", True)
     for tf in units:
         g = GRAN[tf]
-        last_open = (int(now) // g) * g - g
+        last_open = (int(now) // g) * g - (0 if live else g)    # bougie analysée : en cours, ou dernière terminée
         if first_silent and tf not in st.get("vu", {}):
             st.setdefault("vu", {})[tf] = last_open
             continue
         for name, code in cfg["marches"].items():
             if tf not in market_units(cfg, name):
                 continue
-            df = candles(data.get((code, g), []), g, now)
+            df = candles(data.get((code, g), []), g, now, en_cours=live)
             if df.empty:
                 continue
             if int(df["epoch"].iloc[-1]) != last_open:      # marché fermé (week-end) : pas de signal périmé
