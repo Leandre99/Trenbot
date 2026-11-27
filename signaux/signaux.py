@@ -351,7 +351,7 @@ def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, no
         return []
     reqs = [(code, GRAN[tf]) for tf in units for name, code in cfg["marches"].items() if tf in market_units(cfg, name)]
     data = asyncio.run(_fetch_all(reqs))
-    found = []
+    found, keys = [], []
     sent = st.setdefault("envoyes", {})
     live = not cfg.get("attendre_cloture", True)
     for tf in units:
@@ -374,20 +374,22 @@ def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, no
             key = f"{code}|{tf}|{sig['epoch']}"
             if key in sent:
                 continue
-            title, text = message(name, tf, sig)
-            log.info("SIGNAL %s | %s", title, text.replace("\n", " | "))
-            ok = notify(cfg, title, text, sig["sens"] == "ACHAT") if send else True
-            if ok:
-                sent[key] = int(now)
             found.append((name, tf, sig))
+            keys.append(key)
         st.setdefault("vu", {})[tf] = last_open
     for k in [k for k, v in sent.items() if now - v > 7 * 86400]:       # on oublie après une semaine
         del sent[k]
-    if send and found and st.get("trading") and cfg.get("trading_auto", {}).get("actif"):
-        for nom, lignes in trading.executer(found, cfg).items():
-            if lignes:
-                log.info("trading auto : compte rendu envoyé sur Telegram (%d ligne(s))", len(lignes))   # détails hors des journaux publics
-                notify(cfg, f"Trading auto ({nom})", "\n".join(lignes))
+    # trading arrêté : messages habituels ; démarré : chaque message dit si la position a été prise ou non
+    auto = bool(send and found and st.get("trading") and cfg.get("trading_auto", {}).get("actif"))
+    statuts = trading.executer(found, cfg) if auto else [[] for _ in found]
+    for (name, tf, sig), key, lignes in zip(found, keys, statuts):
+        title, text = message(name, tf, sig)
+        log.info("SIGNAL %s | %s", title, text.replace("\n", " | "))        # sans le détail des positions (journaux publics)
+        if lignes:
+            text += "\n" + "\n".join(lignes)
+        ok = notify(cfg, title, text, sig["sens"] == "ACHAT") if send else True
+        if ok or auto:                       # trade tenté : jamais une 2e fois, même si le message n'est pas parti
+            sent[key] = int(now)
     return found
 
 

@@ -118,10 +118,21 @@ async def _preparer(s: Session, sig: dict, symbol: str, currency: str, solde: fl
                p["risque"], p["risque_max"])
     if isinstance(t, str):
         return t
-    r = await s.ask(_proposal(sig, symbol, currency, t["mise"], t["mult"], t["sl_amt"], t["tp_amt"]))
-    if "error" in r:
-        return f"Deriv : {r['error'].get('message')}"
-    pr = r["proposal"]
+    for passe in range(2):          # 2e passe : recalcul avec le dernier prix et la vraie commission de cette taille
+        r = await s.ask(_proposal(sig, symbol, currency, t["mise"], t["mult"], t["sl_amt"], t["tp_amt"]))
+        if "error" in r:
+            return f"Deriv : {r['error'].get('message')}"
+        pr = r["proposal"]
+        if passe == 0:
+            n = t["mise"] * t["mult"]
+            spot2, comm2 = float(pr["spot"]), float(pr.get("commission", 0)) / n
+            d_sl, d_tp = (spot2 - sig["stop"]) * side / spot2, (sig["objectif"] - spot2) * side / spot2
+            if d_sl <= 0 or d_tp <= 0:
+                return "le prix a déjà dépassé le SL ou le TP"
+            sl_amt, tp_amt = n * (d_sl + comm2), n * (d_tp - comm2)
+            if sl_amt / solde > p["risque_max"] + 1e-9 or sl_amt >= t["mise"] or min(sl_amt, tp_amt) < ordre_min:
+                return "taille impossible après mise à jour du prix"
+            t = dict(t, sl_amt=sl_amt, tp_amt=tp_amt, risque_pct=sl_amt / solde)
     lo = pr.get("limit_order", {})
     sl_px, tp_px = float(lo["stop_loss"]["value"]), float(lo["take_profit"]["value"])
     dist = abs(sig["prix"] - sig["stop"])
@@ -131,7 +142,8 @@ async def _preparer(s: Session, sig: dict, symbol: str, currency: str, solde: fl
 
 
 async def _compte(compte: dict, signaux: list, cfg: dict, p: dict, achat: bool) -> list[str]:
-    """Traite les signaux pour un compte. achat=False : calcule sans acheter (connexion publique, solde fictif)."""
+    """Traite les signaux pour un compte. achat=False : calcule sans acheter (connexion publique, solde fictif).
+    Renvoie une ligne par signal, dans le même ordre."""
     out = []
     url = await asyncio.to_thread(_otp_url, compte) if achat else WS_PUBLIC
     async with websockets.connect(url, open_timeout=20, close_timeout=5) as ws:
@@ -147,43 +159,52 @@ async def _compte(compte: dict, signaux: list, cfg: dict, p: dict, achat: bool) 
         for name, tf, sig in signaux:
             symbol = cfg["marches"][name]
             if nb >= p["positions_max"]:
-                out.append(f"{sig['sens']} {name} ({tf}) non pris : {nb} positions déjà ouvertes")
+                out.append(f"NON PRISE : {nb} positions déjà ouvertes")
                 continue
             if symbol in ouverts:
-                out.append(f"{sig['sens']} {name} ({tf}) non pris : position déjà ouverte sur ce marché")
+                out.append("NON PRISE : position déjà ouverte sur ce marché")
                 continue
             prep = await _preparer(s, sig, symbol, currency, solde, p)
             if isinstance(prep, str):
-                out.append(f"{sig['sens']} {name} ({tf}) non pris : {prep}")
+                out.append(f"NON PRISE : {prep}")
                 continue
-            detail = (f"mise {prep['mise']:.2f} {currency} x{prep['mult']:g}, risque {prep['sl_amt']:.2f} "
-                      f"({prep['risque_pct'] * 100:.1f} %), SL {prep['sl_px']}, TP {prep['tp_px']}")
+            detail = (f"mise {prep['mise']:.2f} {currency} x{prep['mult']:g}, risque {prep['sl_amt']:.2f} {currency} "
+                      f"({prep['risque_pct'] * 100:.1f} %)")
             if not achat:
-                out.append(f"{sig['sens']} {name} ({tf}) [essai, pas d'achat] : {detail}")
+                out.append(f"ESSAI (pas d'achat) : {detail}, SL {prep['sl_px']}, TP {prep['tp_px']}")
                 continue
             r = await s.ask({"buy": prep["id"], "price": prep["ask"]})
             if "error" in r:
-                out.append(f"{sig['sens']} {name} ({tf}) non pris : Deriv : {r['error'].get('message')}")
+                out.append(f"NON PRISE : Deriv : {r['error'].get('message')}")
                 continue
             nb += 1
             ouverts.add(symbol)
-            out.append(f"{sig['sens']} {name} ({tf}) PRIS : {detail}")
+            out.append(f"PRISE : {detail}")
     return out
 
 
-def executer(signaux: list, cfg: dict, achat: bool = True, comptes_essai: list | None = None) -> dict:
-    """signaux : liste (nom, unité, sig) des NOUVEAUX signaux. Renvoie {nom du compte: [lignes de compte rendu]}."""
+def executer(signaux: list, cfg: dict, achat: bool = True, comptes_essai: list | None = None) -> list[list[str]]:
+    """signaux : liste (nom, unité, sig) des NOUVEAUX signaux. Renvoie, pour chaque signal (même ordre), les lignes
+    « Position : ... » à ajouter à son message (une par compte)."""
     p = cfg["trading_auto"]
-    signaux = [x for x in signaux if x[1] in p["unites"]]
     lst = comptes_essai if comptes_essai is not None else comptes()
-    if not signaux or not lst or not p.get("actif"):
-        return {}
-    res = {}
+    res = [[] for _ in signaux]
+    if not lst:
+        return [["Position : non prise (aucun compte Deriv configuré)"] for _ in signaux]
+    idx = [i for i, x in enumerate(signaux) if x[1] in p["unites"]]
+    for i, x in enumerate(signaux):
+        if i not in idx:
+            res[i].append(f"Position : non prise (trading auto seulement en {', '.join(p['unites'])})")
+    if not idx:
+        return res
     for c in lst:
         nom = c.get("nom") or "compte"
+        pre = f"Position ({nom}) : " if len(lst) > 1 else "Position : "
         try:
-            res[nom] = asyncio.run(_compte(c, signaux, cfg, p, achat))
+            lignes = asyncio.run(_compte(c, [signaux[i] for i in idx], cfg, p, achat))
         except Exception as e:  # noqa: BLE001
             msg = str(e).replace(c.get("jeton", "") or "<aucun>", "***")
-            res[nom] = [f"erreur, aucun trade sur ce compte : {msg[:200]}"]
+            lignes = [f"NON PRISE : erreur de connexion au compte ({msg[:150]})"] * len(idx)
+        for i, ligne in zip(idx, lignes):
+            res[i].append(pre + ligne)
     return res

@@ -29,6 +29,9 @@ le SL et le TP du message (1,5 ATR). Code : `trading.py`. **Arrêté par défaut
 `/demarrer` : prend les prochains signaux ; `/arreter` : n'en prend plus (les positions ouvertes restent ouvertes) ;
 `/etat` : état et réglages.
 
+**Messages** : trading arrêté → les signaux arrivent comme d'habitude. Trading démarré → chaque signal porte en plus une ligne
+`Position : PRISE : mise …, risque … (2.0 %)` ou `Position : NON PRISE : <raison>` (H1/H4 : jamais pris automatiquement).
+
 **Règles** (`trading_auto` dans `signaux.py`) :
 - perte au SL (commission comprise) = **2 % du solde** du compte au moment du trade ;
 - si les minimums de Deriv (mise 1 $, SL et TP à 0,10 $ minimum, multiplicateurs imposés) obligent à risquer plus,
