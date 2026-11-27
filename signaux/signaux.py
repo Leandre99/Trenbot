@@ -51,8 +51,8 @@ DEFAULT = {
         "Volatility 50 (1s)": "1HZ50V", "Volatility 75 (1s)": "1HZ75V", "Volatility 100 (1s)": "1HZ100V",
     },
     # absents de l'API publique de Deriv : CAD/CHF, CAD/JPY, CHF/JPY, Volatility 150 (1s)
-    "unites": ["M30", "H1", "H4"],                 # unités de tous les marchés (au choix : M1 M5 M15 M30 H1 H4 D1)
-    "unites_marche": {"Or": ["M15", "M30", "H1", "H4"]},   # exceptions : unités propres à un marché (nom affiché)
+    "unites": ["M15", "M30", "H1", "H4"],                 # unités de tous les marchés (au choix : M1 M5 M15 M30 H1 H4 D1)
+    "unites_marche": {},                                    # exceptions : unités propres à un marché (nom affiché)
     "telegram_token": "",                    # jeton donné par @BotFather (reste sur ta machine, jamais sur GitHub)
     "telegram_chat_id": "",                  # rempli tout seul par : python signaux.py --telegram
     "ntfy_serveur": "https://ntfy.sh",

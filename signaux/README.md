@@ -38,8 +38,8 @@ affiché au démarrage.
 | Clé | Rôle |
 |---|---|
 | `marches` | nom affiché -> code Deriv (`frxEURUSD`, `frxXAUUSD`, `R_75`, `stpRNG`…) |
-| `unites` | unités de temps de tous les marchés : `M1`, `M5`, `M15`, `M30`, `H1`, `H4`, `D1` (par défaut `M30`, `H1`, `H4`) |
-| `unites_marche` | exceptions par marché (nom affiché -> unités). Par défaut `{"Or": ["M15", "M30", "H1", "H4"]}` : M15 pour l'or seulement |
+| `unites` | unités de temps de tous les marchés : `M1`, `M5`, `M15`, `M30`, `H1`, `H4`, `D1` (par défaut `M15`, `M30`, `H1`, `H4`) |
+| `unites_marche` | exceptions par marché (nom affiché -> unités). Par défaut `{}` (aucune). Exemple : `{"Or": ["M15", "M30", "H1", "H4"]}` |
 | `mm_rapide`, `mm_moyenne`, `mm_lente` | 8, 21, 50 |
 | `rsi_periode`, `rsi_bas`, `rsi_haut` | 14, 30, 70 |
 | `attendre_cloture` | `false` (par défaut) : analyse aussi la bougie en cours, signal plus tôt mais il peut disparaître ; `true` : bougies terminées seulement |

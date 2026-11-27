@@ -100,7 +100,8 @@ def test_unites_a_traiter():
     assert s.due_units(cfg, st, now + 900) == ["M15"]           # 15 min plus tard : seulement M15
 
 
-def test_m15_seulement_pour_l_or():
+def test_m15_seulement_pour_l_or():                        # avec une exception par marché
+    P = dict(s.DEFAULT, unites=["M30", "H1", "H4"], unites_marche={"Or": ["M15", "M30", "H1", "H4"]})
     assert s.market_units(P, "Or") == ["M15", "M30", "H1", "H4"]
     assert s.market_units(P, "Volatility 75") == ["M30", "H1", "H4"]
     assert s.all_units(P) == ["M15", "M30", "H1", "H4"]
