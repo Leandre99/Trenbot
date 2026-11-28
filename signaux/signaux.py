@@ -25,15 +25,12 @@ import os
 import secrets
 import sys
 import time
-import unicodedata
 import urllib.request
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import websockets
-
-import trading
 
 HERE = Path(__file__).parent
 CONFIG = HERE / "config.json"
@@ -65,9 +62,6 @@ DEFAULT = {
     "rsi_marge": 5,                          # « frôler » : le RSI est descendu sous 30 + 5 (ou monté au-dessus de 70 - 5)
     "rsi_memoire": 50,                       # ... au cours des N dernières bougies
     "rsi_obligatoire": False,                # False : le RSI confirme seulement (indiqué dans le message) ; True : exigé
-    # Prise de position automatique (trading.py). Ne fait rien sans les secrets DERIV_APP_ID et DERIV_COMPTES,
-    # ni avant la commande Telegram /demarrer (/arreter pour couper, /etat pour voir).
-    "trading_auto": {"actif": True, "unites": ["M15", "M30"], "risque": 0.02, "risque_max": 0.03, "positions_max": 3},
     "attendre_cloture": False,               # False : analyse aussi la bougie EN COURS (signal plus tôt, mais il peut
                                              #   disparaître avant la clôture) ; True : bougies terminées seulement
     "croisement_max": 30,                    # la cassure de la MM50 doit suivre le croisement MM8/MM21 de N bougies au plus
@@ -284,40 +278,6 @@ def _notify_ntfy(cfg: dict, title: str, text: str, buy: bool | None = None) -> b
     return _post_json(cfg["ntfy_serveur"].rstrip("/"), body)
 
 
-def telegram_commandes(cfg: dict, st: dict) -> None:
-    """Lit les messages reçus par le bot Telegram : /demarrer, /arreter, /etat (seulement depuis ta discussion)."""
-    tok, chat = cfg.get("telegram_token"), str(cfg.get("telegram_chat_id") or "")
-    if not tok or not chat:
-        return
-    _TOKEN["v"] = tok
-    off = st.get("tg_offset", 0)
-    try:
-        with urllib.request.urlopen(f"https://api.telegram.org/bot{tok}/getUpdates?offset={off + 1}&timeout=0",
-                                    timeout=20) as r:
-            upd = json.loads(r.read().decode("utf-8")).get("result", [])
-    except Exception as e:  # noqa: BLE001
-        log.warning("commandes Telegram non lues : %s", str(e).replace(tok, "***"))
-        return
-    for u in upd:
-        st["tg_offset"] = max(st.get("tg_offset", 0), u["update_id"])
-        m = u.get("message") or {}
-        if str(m.get("chat", {}).get("id")) != chat:
-            continue                                       # quelqu'un d'autre : ignoré
-        cmd = (m.get("text") or "").strip().split("@")[0].split()[0:1]
-        cmd = unicodedata.normalize("NFKD", cmd[0] if cmd else "").encode("ascii", "ignore").decode().lower()   # /démarrer = /demarrer
-        if cmd == "/demarrer":
-            st["trading"] = True
-            notify(cfg, "Trading automatique DÉMARRÉ", "Les prochains signaux M15 et M30 seront pris automatiquement.")
-        elif cmd == "/arreter":
-            st["trading"] = False
-            notify(cfg, "Trading automatique ARRÊTÉ", "Plus aucune position ne sera prise (les positions ouvertes restent ouvertes).")
-        elif cmd == "/etat":
-            p = cfg["trading_auto"]
-            notify(cfg, "État du bot", f"Trading automatique : {'MARCHE' if st.get('trading') else 'ARRÊT'}\n"
-                   f"Unités : {', '.join(p['unites'])} | risque {p['risque'] * 100:g} % (max {p['risque_max'] * 100:g} %)"
-                   f" | {p['positions_max']} positions max\nComptes configurés : {len(trading.comptes())}")
-
-
 def market_units(cfg: dict, name: str) -> list[str]:
     """Unités de temps surveillées pour ce marché : son exception dans unites_marche, sinon unites."""
     return (cfg.get("unites_marche") or {}).get(name, cfg["unites"])
@@ -353,7 +313,7 @@ def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, no
         return []
     reqs = [(code, GRAN[tf]) for tf in units for name, code in cfg["marches"].items() if tf in market_units(cfg, name)]
     data = asyncio.run(_fetch_all(reqs))
-    found, keys = [], []
+    found = []
     sent = st.setdefault("envoyes", {})
     live = not cfg.get("attendre_cloture", True)
     for tf in units:
@@ -376,22 +336,15 @@ def run_once(cfg: dict, st: dict, send: bool, units: list[str] | None = None, no
             key = f"{code}|{tf}|{sig['epoch']}"
             if key in sent:
                 continue
+            title, text = message(name, tf, sig)
+            log.info("SIGNAL %s | %s", title, text.replace("\n", " | "))
+            ok = notify(cfg, title, text, sig["sens"] == "ACHAT") if send else True
+            if ok:
+                sent[key] = int(now)
             found.append((name, tf, sig))
-            keys.append(key)
         st.setdefault("vu", {})[tf] = last_open
     for k in [k for k, v in sent.items() if now - v > 7 * 86400]:       # on oublie après une semaine
         del sent[k]
-    # trading arrêté : messages habituels ; démarré : chaque message dit si la position a été prise ou non
-    auto = bool(send and found and st.get("trading") and cfg.get("trading_auto", {}).get("actif"))
-    statuts = trading.executer(found, cfg) if auto else [[] for _ in found]
-    for (name, tf, sig), key, lignes in zip(found, keys, statuts):
-        title, text = message(name, tf, sig)
-        log.info("SIGNAL %s | %s", title, text.replace("\n", " | "))        # sans le détail des positions (journaux publics)
-        if lignes:
-            text += "\n" + "\n".join(lignes)
-        ok = notify(cfg, title, text, sig["sens"] == "ACHAT") if send else True
-        if ok or auto:                       # trade tenté : jamais une 2e fois, même si le message n'est pas parti
-            sent[key] = int(now)
     return found
 
 
@@ -420,8 +373,6 @@ def main() -> None:
         log.info("notification d'essai : %s", "envoyée" if ok else "ÉCHEC")
         return
     st = load_state()
-    if not args.sans_notif:
-        telegram_commandes(cfg, st)
     if args.passage:
         found = run_once(cfg, st, not args.sans_notif, first_silent=True)
         save_state(st)
@@ -435,8 +386,6 @@ def main() -> None:
         notify(cfg, "Bot de signaux démarré", f"Unités : {', '.join(all_units(cfg))}\nMarchés : {len(cfg['marches'])}")
     while True:
         try:
-            if not args.sans_notif:
-                telegram_commandes(cfg, st)
             run_once(cfg, st, not args.sans_notif)
             save_state(st)
         except Exception:  # noqa: BLE001

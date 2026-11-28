@@ -38,9 +38,9 @@ Il surveille les marchés et envoie des notifications en direct sur ton téléph
 
 ## Historique des changements de stratégie
 
-### 28/11/2026 : trading automatique (M15 et M30)
+### 29/11/2026 : trading automatique retiré
 
-Le bot peut prendre les positions des signaux M15 et M30 sur Deriv (Multipliers), SL/TP du message, 2 % de risque (3 % max), 3 positions max. Démarrage et arrêt par Telegram (`/demarrer`, `/arreter`, `/etat`), arrêté par défaut. Ne fait rien sans les secrets `DERIV_APP_ID` et `DERIV_COMPTES`. Détails : `signaux/README.md`, section « Trading automatique ».
+Le bot ne prend plus aucune position : il envoie seulement les signaux, comme avant. La version qui prenait les positions des signaux M15/M30 sur Deriv (Multipliers, commandes Telegram `/demarrer`, `/arreter`, `/etat`) reste récupérable : commit `f3abe87` (`git checkout f3abe87 -- signaux/ .github/`).
 
 ### 27/11/2026 : on n'attend plus la clôture des bougies
 
