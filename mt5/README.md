@@ -42,6 +42,13 @@ Le bot de signaux sur GitHub continue d'envoyer ses signaux de son côté (toute
 Si des symboles sont « introuvables », recopie leur nom exact depuis la **Surveillance du marché** de MT5 dans le
 paramètre `InpSymbols`.
 
+## Mettre à jour le robot (double-clic)
+
+Une seule fois : télécharge **`MAJ-TrenBot.bat`** (dossier `mt5` sur GitHub) et mets-le sur le **Bureau du serveur**.
+Ensuite, à chaque nouvelle version : **double-clic sur `MAJ-TrenBot.bat`**. Il télécharge la dernière version de
+`TrenBot.mq5`, la place dans `MQL5\Experts` et la compile ; MT5 recharge le robot tout seul. Une fenêtre affiche
+`OK : TrenBot est à jour` (ou l'erreur de compilation à envoyer).
+
 ## À savoir
 
 - MT5 doit rester **ouvert** sur le serveur (ferme la fenêtre Bureau à distance sans te déconnecter de Windows :
