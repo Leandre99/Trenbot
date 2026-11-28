@@ -70,10 +70,14 @@ int OnInit()
       int k = ArraySize(g_syms);
       ArrayResize(g_syms, k + 1);
       ArrayResize(g_symOk, k + 1);
-      g_syms[k]  = s;
-      g_symOk[k] = SymbolSelect(s, true);
+      string real = FindSymbol(s);                  // nom exact chez le courtier (majuscules/espaces ignorés)
+      g_syms[k]  = real == "" ? s : real;
+      g_symOk[k] = real != "" && SymbolSelect(real, true);
       if(!g_symOk[k])
          Print("TrenBot : symbole introuvable chez ce courtier : ", s);
+      else
+         if(real != s)
+            Print("TrenBot : '", s, "' trouvé sous le nom '", real, "'");
      }
    int nt = StringSplit(InpTimeframes, ',', parts);
    ArrayResize(g_tfs, 0);
@@ -141,6 +145,33 @@ ENUM_TIMEFRAMES TfFromName(const string t)
    if(t == "H4")  return PERIOD_H4;
    if(t == "D1")  return PERIOD_D1;
    return PERIOD_CURRENT;
+  }
+
+//+------------------------------------------------------------------+
+string Key(string s)
+  {
+   StringToLower(s);
+   StringReplace(s, " ", "");
+   return s;
+  }
+
+//+------------------------------------------------------------------+
+//| Nom exact du symbole chez le courtier, en ignorant majuscules et  |
+//| espaces ("Volatility 100 (1s) Index" = "Volatility 100 (1S) Index")|
+//+------------------------------------------------------------------+
+string FindSymbol(const string wanted)
+  {
+   if(SymbolSelect(wanted, true))
+      return wanted;
+   string k = Key(wanted);
+   int n = SymbolsTotal(false);
+   for(int i = 0; i < n; i++)
+     {
+      string name = SymbolName(i, false);
+      if(Key(name) == k)
+         return name;
+     }
+   return "";
   }
 
 //+------------------------------------------------------------------+
