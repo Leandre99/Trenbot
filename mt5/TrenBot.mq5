@@ -101,6 +101,7 @@ int OnInit()
    g_on     = GlobalVariableCheck(GV_ON) && GlobalVariableGet(GV_ON) > 0.5;
    g_offset = GlobalVariableCheck(GV_OFFSET) ? (long)GlobalVariableGet(GV_OFFSET) : 0;
    EventSetTimer(20);
+   Print("TrenBot : Telegram -> jeton ", Tok() == "" ? "VIDE" : "renseigné", ", discussion InpTgChat = '", Chat(), "'");
    Tg(InpNom + " : TrenBot lancé. Trading automatique " + (g_on ? "EN MARCHE" : "ARRÊTÉ (envoie /demarrer)") +
       "\nSymboles trouvés : " + IntegerToString(CountOk()) + "/" + IntegerToString(ArraySize(g_syms)) +
       " | Unités : " + InpTimeframes);
@@ -429,12 +430,56 @@ string UrlEncode(const string s)
   }
 
 //+------------------------------------------------------------------+
+string Trim(string s)
+  {
+   StringTrimLeft(s);
+   StringTrimRight(s);
+   StringReplace(s, "\"", "");
+   return s;
+  }
+
+string Tok()  { return Trim(InpTgToken); }
+string Chat() { return Trim(InpTgChat); }
+
+//+------------------------------------------------------------------+
+//| Explication lisible de la réponse de Telegram en cas d'échec      |
+//+------------------------------------------------------------------+
+string TgReason(const int code, const uchar &res[])
+  {
+   string js = CharArrayToString(res, 0, WHOLE_ARRAY, CP_UTF8);
+   string why = js;
+   int d = StringFind(js, "\"description\":\"");
+   if(d >= 0)
+     {
+      d += 15;
+      int e = StringFind(js, "\"", d);
+      why = StringSubstr(js, d, e > d ? e - d : 200);
+     }
+   string hint = "";
+   if(code == 401 || code == 404)
+      hint = " -> jeton Telegram (InpTgToken) incorrect";
+   else
+      if(StringFind(why, "chat not found") >= 0)
+         hint = " -> identifiant (InpTgChat) incorrect, ou le bot n'est pas dans ce canal / cette discussion";
+      else
+         if(StringFind(why, "not enough rights") >= 0 || StringFind(why, "not a member") >= 0 || code == 403)
+            hint = " -> le bot doit être ADMINISTRATEUR du canal (ou tu dois avoir appuyé sur Démarrer dans le bot)";
+         else
+            if(code == 409)
+               hint = " -> un autre programme lit déjà les messages de ce bot (webhook ou autre robot)";
+   return "HTTP " + IntegerToString(code) + " : " + StringSubstr(why, 0, 200) + hint;
+  }
+
+//+------------------------------------------------------------------+
 bool Tg(const string text)
   {
-   if(InpTgToken == "" || InpTgChat == "")
+   if(Tok() == "" || Chat() == "")
+     {
+      Print("TrenBot : InpTgToken ou InpTgChat vide, aucun message Telegram envoyé");
       return false;
-   string url  = "https://api.telegram.org/bot" + InpTgToken + "/sendMessage";
-   string body = "chat_id=" + UrlEncode(InpTgChat) + "&text=" + UrlEncode(text);
+     }
+   string url  = "https://api.telegram.org/bot" + Tok() + "/sendMessage";
+   string body = "chat_id=" + UrlEncode(Chat()) + "&text=" + UrlEncode(text);
    uchar data[], res[];
    StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
    ArrayResize(data, ArraySize(data) - 1);          // sans le 0 final
@@ -447,7 +492,12 @@ bool Tg(const string text)
             "Autoriser WebRequest (erreur ", GetLastError(), ")");
       return false;
      }
-   return code == 200;
+   if(code != 200)
+     {
+      Print("TrenBot : Telegram refuse le message, ", TgReason(code, res));
+      return false;
+     }
+   return true;
   }
 
 //+------------------------------------------------------------------+
@@ -518,14 +568,23 @@ void Command(const string raw)
 //+------------------------------------------------------------------+
 void PollTelegram()
   {
-   if(InpTgToken == "" || InpTgChat == "")
+   if(Tok() == "" || Chat() == "")
       return;
-   string url = "https://api.telegram.org/bot" + InpTgToken + "/getUpdates?timeout=0&offset=" + IntegerToString(g_offset + 1);
+   string url = "https://api.telegram.org/bot" + Tok() + "/getUpdates?timeout=0&offset=" + IntegerToString(g_offset + 1);
    uchar data[], res[];
    string rh;
    int code = WebRequest("GET", url, "", 10000, data, res, rh);
    if(code != 200)
+     {
+      static datetime lastErr = 0;
+      if(TimeCurrent() - lastErr > 600)                // au plus un message toutes les 10 min
+        {
+         lastErr = TimeCurrent();
+         Print("TrenBot : lecture des commandes Telegram impossible, ",
+               code == -1 ? "adresse https://api.telegram.org non autorisée (Outils > Options > Expert Advisors)" : TgReason(code, res));
+        }
       return;
+     }
    string js = CharArrayToString(res, 0, WHOLE_ARRAY, CP_UTF8);
    string tag = "\"update_id\":";
    int pos = StringFind(js, tag);
@@ -562,8 +621,15 @@ void PollTelegram()
            }
          txt = StringSubstr(seg, t, e - t);
         }
-      if(chat != "" && chat == InpTgChat && txt != "")
+      if(chat != "" && chat == Chat() && txt != "")
+        {
+         Print("TrenBot : commande reçue : ", txt);
          Command(txt);
+        }
+      else
+         if(chat != "" && txt != "")
+            Print("TrenBot : message ignoré, il vient de la discussion ", chat, " alors que InpTgChat = ", Chat(),
+                  ". Si c'est bien toi, mets ", chat, " dans InpTgChat.");
       pos = next;
      }
    GlobalVariableSet(GV_OFFSET, (double)g_offset);
