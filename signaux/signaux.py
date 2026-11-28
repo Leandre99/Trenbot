@@ -25,6 +25,7 @@ import os
 import secrets
 import sys
 import time
+import unicodedata
 import urllib.request
 from pathlib import Path
 
@@ -302,7 +303,8 @@ def telegram_commandes(cfg: dict, st: dict) -> None:
         m = u.get("message") or {}
         if str(m.get("chat", {}).get("id")) != chat:
             continue                                       # quelqu'un d'autre : ignoré
-        cmd = (m.get("text") or "").strip().split("@")[0].lower()
+        cmd = (m.get("text") or "").strip().split("@")[0].split()[0:1]
+        cmd = unicodedata.normalize("NFKD", cmd[0] if cmd else "").encode("ascii", "ignore").decode().lower()   # /démarrer = /demarrer
         if cmd == "/demarrer":
             st["trading"] = True
             notify(cfg, "Trading automatique DÉMARRÉ", "Les prochains signaux M15 et M30 seront pris automatiquement.")
