@@ -101,7 +101,8 @@ int OnInit()
    g_on     = GlobalVariableCheck(GV_ON) && GlobalVariableGet(GV_ON) > 0.5;
    g_offset = GlobalVariableCheck(GV_OFFSET) ? (long)GlobalVariableGet(GV_OFFSET) : 0;
    EventSetTimer(20);
-   Print("TrenBot : Telegram -> jeton ", Tok() == "" ? "VIDE" : "renseigné", ", discussion InpTgChat = '", Chat(), "'");
+   Print("TrenBot : Telegram -> jeton ", Tok() == "" ? "VIDE" : "renseigné", ", discussion InpTgChat = '", Chat(), "', DLL ",
+         MQLInfoInteger(MQL_DLLS_ALLOWED) ? "autorisées (Telegram via Windows)" : "NON autorisées (Telegram via WebRequest, souvent en panne : autorise les DLL)");
    Tg(InpNom + " : TrenBot lancé. Trading automatique " + (g_on ? "EN MARCHE" : "ARRÊTÉ (envoie /demarrer)") +
       "\nSymboles trouvés : " + IntegerToString(CountOk()) + "/" + IntegerToString(ArraySize(g_syms)) +
       " | Unités : " + InpTimeframes);
@@ -444,9 +445,12 @@ string Chat() { return Trim(InpTgChat); }
 //+------------------------------------------------------------------+
 //| Explication lisible de la réponse de Telegram en cas d'échec      |
 //+------------------------------------------------------------------+
-string TgReason(const int code, const uchar &res[])
+string TgReason(const int code, const string js)
   {
-   string js = CharArrayToString(res, 0, WHOLE_ARRAY, CP_UTF8);
+   if(code >= 1000 || code == -1)
+      return "code " + IntegerToString(code) + " (connexion impossible depuis MT5)" +
+             (MQLInfoInteger(MQL_DLLS_ALLOWED) ? "" :
+              " -> autorise les DLL : Tools > Options > Expert Advisors > Allow DLL imports, ET onglet Common du robot > Allow DLL imports, puis remets le robot sur le graphique");
    string why = js;
    int d = StringFind(js, "\"description\":\"");
    if(d >= 0)
@@ -478,26 +482,77 @@ bool Tg(const string text)
       Print("TrenBot : InpTgToken ou InpTgChat vide, aucun message Telegram envoyé");
       return false;
      }
-   string url  = "https://api.telegram.org/bot" + Tok() + "/sendMessage";
-   string body = "chat_id=" + UrlEncode(Chat()) + "&text=" + UrlEncode(text);
-   uchar data[], res[];
-   StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
-   ArrayResize(data, ArraySize(data) - 1);          // sans le 0 final
-   string rh;
-   ResetLastError();
-   int code = WebRequest("POST", url, "Content-Type: application/x-www-form-urlencoded\r\n", 10000, data, res, rh);
-   if(code == -1)
-     {
-      Print("TrenBot : Telegram injoignable. Ajoute https://api.telegram.org dans Outils > Options > Expert Advisors > ",
-            "Autoriser WebRequest (erreur ", GetLastError(), ")");
-      return false;
-     }
+   string url = "https://api.telegram.org/bot" + Tok() + "/sendMessage?chat_id=" + UrlEncode(Chat()) +
+                "&text=" + UrlEncode(text);
+   string js;
+   int code = HttpGet(url, js);
    if(code != 200)
      {
-      Print("TrenBot : Telegram refuse le message, ", TgReason(code, res));
+      Print("TrenBot : Telegram refuse le message, ", TgReason(code, js));
       return false;
      }
    return true;
+  }
+
+//+------------------------------------------------------------------+
+//| HTTP GET. Les dernières versions de MT5 ont un bug : WebRequest   |
+//| échoue (code 1009) sur certains sites HTTPS, dont Telegram. On    |
+//| passe donc par la bibliothèque internet de Windows (wininet.dll)  |
+//| quand les DLL sont autorisées, sinon par WebRequest.               |
+//| Renvoie 200 si Telegram répond "ok":true.                          |
+//+------------------------------------------------------------------+
+#import "wininet.dll"
+long InternetOpenW(string agent, int accessType, string proxy, string bypass, uint flags);
+long InternetOpenUrlW(long hInternet, string url, string headers, int headersLength, uint flags, long context);
+int  InternetReadFile(long hFile, uchar &buffer[], int bytesToRead, int &bytesRead[]);
+int  InternetCloseHandle(long hInternet);
+#import
+
+int HttpGetWin(const string url, string &out)
+  {
+   out = "";
+   long hNet = InternetOpenW("TrenBot", 1, "", "", 0);            // 1 = connexion directe
+   if(hNet == 0)
+      return 1001;
+   uint flags = 0x80000000 | 0x04000000 | 0x00000100;               // RELOAD | NO_CACHE_WRITE | PRAGMA_NOCACHE
+   long hUrl = InternetOpenUrlW(hNet, url, "", 0, flags, 0);
+   if(hUrl == 0)
+     {
+      InternetCloseHandle(hNet);
+      return 1002;
+     }
+   uchar buf[4096], all[];
+   int rd[1];
+   while(true)
+     {
+      rd[0] = 0;
+      if(InternetReadFile(hUrl, buf, 4096, rd) == 0 || rd[0] <= 0)
+         break;
+      int n = ArraySize(all);
+      ArrayResize(all, n + rd[0]);
+      ArrayCopy(all, buf, n, 0, rd[0]);
+     }
+   InternetCloseHandle(hUrl);
+   InternetCloseHandle(hNet);
+   out = CharArrayToString(all, 0, WHOLE_ARRAY, CP_UTF8);
+   if(StringFind(out, "\"ok\":true") >= 0)
+      return 200;
+   int ec = StringFind(out, "\"error_code\":");
+   return ec >= 0 ? (int)StringToInteger(DigitsAt(out, ec + 13)) : 1003;
+  }
+
+int HttpGet(const string url, string &out)
+  {
+   if(MQLInfoInteger(MQL_DLLS_ALLOWED))
+      return HttpGetWin(url, out);
+   uchar data[], res[];
+   string rh;
+   ResetLastError();
+   int code = WebRequest("GET", url, "", 10000, data, res, rh);
+   out = CharArrayToString(res, 0, WHOLE_ARRAY, CP_UTF8);
+   if(code == 200 && StringFind(out, "\"ok\":true") < 0)
+      code = 400;
+   return code;
   }
 
 //+------------------------------------------------------------------+
@@ -571,21 +626,18 @@ void PollTelegram()
    if(Tok() == "" || Chat() == "")
       return;
    string url = "https://api.telegram.org/bot" + Tok() + "/getUpdates?timeout=0&offset=" + IntegerToString(g_offset + 1);
-   uchar data[], res[];
-   string rh;
-   int code = WebRequest("GET", url, "", 10000, data, res, rh);
+   string js;
+   int code = HttpGet(url, js);
    if(code != 200)
      {
       static datetime lastErr = 0;
       if(TimeCurrent() - lastErr > 600)                // au plus un message toutes les 10 min
         {
          lastErr = TimeCurrent();
-         Print("TrenBot : lecture des commandes Telegram impossible, ",
-               code == -1 ? "adresse https://api.telegram.org non autorisée (Outils > Options > Expert Advisors)" : TgReason(code, res));
+         Print("TrenBot : lecture des commandes Telegram impossible, ", TgReason(code, js));
         }
       return;
      }
-   string js = CharArrayToString(res, 0, WHOLE_ARRAY, CP_UTF8);
    string tag = "\"update_id\":";
    int pos = StringFind(js, tag);
    while(pos >= 0)
